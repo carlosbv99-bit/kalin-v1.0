@@ -1,3 +1,26 @@
+# PYTHON
 __pycache__/
 *.pyc
-*.bak
+*.pyo
+*.pyd
+*.log
+*.tmp
+
+# ANDROID / GRADLE
+.gradle/
+**/.gradle/
+
+.idea/
+*.iml
+local.properties
+
+# BUILD
+build/
+**/build/
+
+# IDE
+.vscode/
+
+# SISTEMA
+.DS_Store
+Thumbs.db
