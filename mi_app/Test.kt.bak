@@ -1,4 +1,5 @@
 class Test {
     fun main() {
+        println("hola")
     }
 }

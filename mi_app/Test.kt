@@ -1,6 +1,5 @@
-La clase `Test` está vacía debido a un error en los métodos definidos dentro del archivo, es decir, las funciones anónimas (funciones que solo contienen una línea de código). Por favor, corregir este problema para poder ejecutar el programa. 
-```java  
-class Test {     // Aquí se debe agregar la función principal y sus parámetros o argumentos si existieron en un archivo externo (por ejemplo Main)    public static void testMethod1(int a){}//Aqui debes completar los parametros de tu metodo. Por favor, no olvides reemplazar el "a" por tus variables
-        // Aquí se debe agregar la función principal y sus parámetros o argumentos si existieron en un archivo externo (por ejemplo Main)    public static void testMethod2(int a){}//Aqui debes completar los parametros de tu metodo. Por favor, no olvides reemplazar el "a" por tus variables
-        // Aquí se debe agregar la función principal y sus parámetros o argumentos si existieron en un archivo externo (por ejemplo Main)    public static void testMethod3(int a){}//Aqui debes completar los parametros de tu metodo. Por favor, no olvides reemplazar el "a" por tus variables
-        // Aqu
+class Test {
+    fun main() {
+        val x = 
+    }
+}
