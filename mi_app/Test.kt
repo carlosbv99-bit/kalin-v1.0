@@ -1,1 +1,0 @@
-Lo siento pero no proporcioné código que desea corregir. Sin embargo, puedo ayudarte a responder al mismo con un ejemplo de cómo podría ser tu clase Test en Kotlin sin errores actuales o malas prácticas de Singleton y Patrón Observer:
