@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agente IA</title>
+</head>
+
+<body style="background:#111;color:white;font-family:Arial;padding:20px;">
+
+<h2>🤖 Agente IA</h2>
+
+<button onclick="quick('/scan')">📊 Scan</button>
+
+<br><br>
+
+<div id="chat" style="height:300px;overflow:auto;border:1px solid #444;padding:10px;"></div>
+
+<br>
+
+<input id="input" style="width:70%;padding:10px;">
+<button onclick="enviar()">Enviar</button>
+
+<script>
+async function enviar() {
+    const input = document.getElementById("input");
+    const chat = document.getElementById("chat");
+
+    const mensaje = input.value;
+
+    if (!mensaje) return;
+
+    chat.innerHTML += "<div>🧑 " + mensaje + "</div>";
+
+    input.value = "";
+
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ mensaje: mensaje })
+        });
+
+        const data = await res.json();
+
+        let texto = data.respuesta || "";
+        if (data.diff) {
+            texto += "\n\n--- CAMBIOS ---\n" + data.diff;
+        }
+
+        if (data.data) {
+            texto += "\n\n" + JSON.stringify(data.data, null, 2);
+        }
+
+        chat.innerHTML += "<div>🤖 <pre>" + texto + "</pre></div>";
+
+    } catch (error) {
+        chat.innerHTML += "<div>❌ Error: " + error + "</div>";
+        console.error(error);
+    }
+
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function quick(cmd) {
+    document.getElementById("input").value = cmd;
+    enviar();
+}
+
+document.getElementById("input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        enviar();
+    }
+});
+</script>
+
+</body>
+</html>

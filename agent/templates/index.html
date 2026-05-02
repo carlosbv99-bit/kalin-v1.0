@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agente IA</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+        #chat {
+            height: 400px;
+            overflow-y: auto;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .msg {
+            margin: 10px 0;
+        }
+
+        .user { color: #38bdf8; }
+        .bot { color: #22c55e; }
+
+        input {
+            width: 70%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: #22c55e;
+            color: black;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>🤖 Agente IA Local</h2>
+
+<!-- 🔥 BOTONES -->
+<div>
+    <button onclick="quick('/scan')">📊 Scan</button>
+    <button onclick="quick('/fix main.dart')">🔧 Fix main.dart</button>
+</div>
+
+<br>
+
+<!-- CHAT -->
+<div id="chat"></div>
+
+<br>
+
+<input id="input" placeholder="Escribe un comando...">
+<button onclick="enviar()">Enviar</button>
+
+<script>
+<script>
+async function enviar() {
+    const input = document.getElementById("input");
+    const chat = document.getElementById("chat");
+
+    const mensaje = input.value;
+
+    if (!mensaje) return;
+
+    // mostrar mensaje usuario
+    chat.innerHTML += `<div class="msg user">🧑 ${mensaje}</div>`;
+
+    input.value = "";
+
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ mensaje })
+        });
+
+        const data = await res.json(); // ✅ ahora sí existe
+
+        let texto = data.respuesta || "";
+
+        if (data.data) {
+            texto += "\n\n" + JSON.stringify(data.data, null, 2);
+        }
+
+        chat.innerHTML += `<div class="msg bot">🤖 <pre>${texto}</pre></div>`;
+
+    } catch (error) {
+        chat.innerHTML += `<div class="msg bot">❌ Error: ${error}</div>`;
+    }
+
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function quick(cmd) {
+    document.getElementById("input").value = cmd;
+    enviar();
+}
+
+// Enter para enviar
+document.getElementById("input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        enviar();
+    }
+});
+</script>
+</script>
+
+</body>
+</html>
