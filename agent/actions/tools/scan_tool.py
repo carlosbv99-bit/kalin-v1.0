@@ -10,18 +10,24 @@ def escanear_proyecto(ruta_base):
         "indicadores": []
     }
 
+    ignore_dirs = {".git", ".venv", "build", ".gradle", "__pycache__", ".idea", ".dart_tool", "node_modules", ".github", "dist", "venv"}
+
     for root, dirs, files in os.walk(ruta_base):
+        dirs[:] = [d for d in dirs if d not in ignore_dirs]
+
         for f in files:
             ruta = os.path.join(root, f)
-            ext = os.path.splitext(f)[1]
+            ext = os.path.splitext(f)[1].lower()
 
-            if ext in EXTENSIONES:
+            tipo = EXTENSIONES.get(ext)  # 👈 clave
+
+            if tipo:
                 resultado["archivos"].append(ruta)
 
-                if ext not in resultado["resumen"]:
-                    resultado["resumen"][ext] = 0
+                if tipo not in resultado["resumen"]:
+                    resultado["resumen"][tipo] = 0
 
-                resultado["resumen"][ext] += 1
+                resultado["resumen"][tipo] += 1
 
             # 🔍 detectar cosas importantes
             if f == "pubspec.yaml":

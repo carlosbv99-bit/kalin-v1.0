@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from agent.llm_client import generar_respuesta  # 👈 cambia esto
+from agent.llm.client import generate
 
 api = FastAPI()
 
@@ -11,12 +11,10 @@ class Request(BaseModel):
 @api.post("/ask")
 def ask(req: Request):
     try:
-        result = generar_respuesta(req.prompt)
-
+        result = generate(req.prompt)
         return {
             "response": result
         }
-
     except Exception as e:
         return {
             "error": str(e)

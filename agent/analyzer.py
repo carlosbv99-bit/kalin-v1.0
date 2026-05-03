@@ -1,4 +1,4 @@
-from agent.llm_client import generar_respuesta
+from agent.llm.client import generate
 
 def analizar_codigo(codigo):
     codigo = codigo[:2000]
@@ -13,4 +13,4 @@ Analiza este código y detecta errores:
 Responde claro.
 """
 
-    return generar_respuesta(prompt, max_tokens=60)
+    return generate(prompt, max_tokens=200)  # Increased from 60 to 200 for better analysis
