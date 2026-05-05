@@ -105,11 +105,31 @@ Devuelve únicamente el código resultado.
     return _seleccionar_mejor(candidatos)
 
 
+def _es_diff_valido(texto: str) -> bool:
+    """Valida que el texto sea un diff unificado válido"""
+    if not texto:
+        return False
+    
+    lineas = texto.strip().split("\n")
+    tiene_header = any(l.startswith("---") or l.startswith("+++") for l in lineas)
+    tiene_hunk = any(l.startswith("@@") for l in lineas)
+    tiene_cambios = any(l.startswith("+") or l.startswith("-") for l in lineas)
+    
+    return tiene_header and (tiene_hunk or tiene_cambios)
+
+
 def reparar_codigo(codigo: str, analisis: str = "", es_flutter: bool = False, max_intentos: int = 1) -> str:
     codigo_base = codigo[:2000]
+    
     if es_flutter:
-        prompt = f"""
-Eres un experto en Flutter UI/UX. Corrige este código de Flutter y devuélvelo completo, funcional y profesional.
+        prompt = f"""Eres un experto en Flutter UI/UX. Devuelve SOLO un diff unificado para reparar este código.
+
+FORMATO REQUERIDO (diff unificado):
+--- original
++++ fixed
+@@ -línea,conteo +línea,conteo @@
+-línea a eliminar
++línea nueva
 
 ANÁLISIS:
 {analisis}
@@ -117,11 +137,16 @@ ANÁLISIS:
 CÓDIGO ORIGINAL:
 {codigo_base}
 
-Devuelve sólo el código corregido sin comentarios adicionales.
-"""
+RESPUESTA: Solo el diff unificado. Nada más."""
     else:
-        prompt = f"""
-Eres un experto en programación. Corrige este código y devuélvelo completo y válido.
+        prompt = f"""Eres un experto en programación. Tu tarea es devolver SOLO un diff unificado para reparar este código.
+
+FORMATO REQUERIDO (diff unificado):
+--- original
++++ fixed
+@@ -línea,conteo +línea,conteo @@
+-línea a eliminar
++línea nueva
 
 ANÁLISIS:
 {analisis}
@@ -129,14 +154,18 @@ ANÁLISIS:
 CÓDIGO ORIGINAL:
 {codigo_base}
 
-Devuelve sólo el código corregido sin explicaciones.
-"""
+RESPUESTA: Solo el diff unificado. Nada más."""
 
     candidatos = []
     for intento in range(max_intentos):
         print(f"🧠 REPARACIÓN intento {intento + 1}")
-        candidato = _generar_candidato(prompt)
-        if candidato:
-            candidatos.append(candidato)
+        resp = generate(prompt, max_tokens=1500)
+        if resp and _es_diff_valido(resp):
+            candidatos.append(resp)
+            print(f"✅ Diff válido generado")
 
-    return _seleccionar_mejor(candidatos)
+    if not candidatos:
+        print(f"❌ No se generó diff válido en {max_intentos} intentos")
+        return ""
+    
+    return candidatos[0]

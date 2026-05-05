@@ -101,3 +101,14 @@ class StateManager:
     def get_estado(self) -> Dict[str, Any]:
         """Retorna estado actual (para debug)"""
         return self.memory.copy()
+    
+    def get_ultimo_archivo(self) -> Optional[Dict]:
+        """Obtiene último archivo procesado"""
+        return self.memory.get("ultimo_archivo")
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Obtiene estadísticas de éxitos y fallos"""
+        return {
+            "exitos": self.memory.get("contador_exitos", 0),
+            "fallos": self.memory.get("contador_fallos", 0)
+        }

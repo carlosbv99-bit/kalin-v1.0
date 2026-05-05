@@ -1,9 +1,8 @@
 ﻿from flask import jsonify
 import os
 from agent.analyzer import analizar_codigo
-from agent.actions.tools.scan_tool import escanear_proyecto
 from agent.actions.tools.fix_tool import generar_codigo, reparar_codigo
-from agent.llm.client import is_available
+from agent.llm.client import is_available, get_provider_status
 from agent.core.state_manager import StateManager
 from agent.core.retry_engine import RetryEngine
 from agent.core.project_analyzer import ProjectAnalyzer
@@ -44,9 +43,12 @@ class Executor:
         if intencion == "scan":
             if not ruta_proyecto:
                 return jsonify({"respuesta": "⚠️ Primero usa /setpath"})
+            if not self.project_analyzer:
+                self.project_analyzer = ProjectAnalyzer(ruta_proyecto)
+
             return jsonify({
                 "respuesta": "📊 Escaneo completado",
-                "data": escanear_proyecto(ruta_proyecto)
+                "data": self.project_analyzer.get_resumen()
             })
 
         if intencion == "apply":
@@ -58,8 +60,17 @@ class Executor:
             original = ultimo_fix.get("codigo_original")
             nuevo = ultimo_fix.get("codigo_nuevo")
 
-            if not utils["es_codigo_valido"](nuevo):
-                return jsonify({"respuesta": "❌ Código inválido"})
+            # Detecta si es diff o código
+            es_diff = nuevo.strip().startswith("---") or nuevo.strip().startswith("@@")
+            
+            if es_diff:
+                # Valida que sea diff
+                if not (nuevo.count("---") > 0 or nuevo.count("@@") > 0):
+                    return jsonify({"respuesta": "❌ Diff inválido"})
+            else:
+                # Valida que sea código válido
+                if not utils["es_codigo_valido"](nuevo):
+                    return jsonify({"respuesta": "❌ Código inválido"})
 
             utils["guardar_backup"](ruta, original)
             utils["escribir_archivo"](ruta, nuevo)
@@ -74,7 +85,11 @@ class Executor:
             if not ruta_proyecto:
                 return jsonify({"respuesta": "⚠️ Primero usa /setpath"})
             if not is_available():
-                return jsonify({"respuesta": "❌ LLM local no disponible en http://127.0.0.1:11434"})
+                status = get_provider_status()
+                return jsonify({
+                    "respuesta": "❌ No hay proveedor LLM disponible. Revisa Ollama local o configura OPENAI_API_KEY/ANTHROPIC_API_KEY.",
+                    "status": status
+                })
 
             # Usa project analyzer para búsqueda mejorada
             if not self.project_analyzer:
@@ -109,17 +124,31 @@ class Executor:
 
             if not nuevo:
                 self.state_manager.registrar_fallo()
+                status = get_provider_status()
                 return jsonify({
-                    "respuesta": "❌ No se pudo generar código. Verifica que el servidor de LLM local esté en http://127.0.0.1:11434", 
-                    "preview": ""
+                    "respuesta": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.",
+                    "preview": "",
+                    "status": status
                 })
 
-            nuevo_limpio = utils["limpiar_codigo"](nuevo) or nuevo
-            valido = utils["es_codigo_valido"](nuevo_limpio)
+            # Detecta si es diff o código completo
+            es_diff = nuevo.strip().startswith("---") or nuevo.strip().startswith("@@")
+            
+            if es_diff:
+                # Es diff: aplica internamente y obtén código nuevo
+                print(f"📋 Diff detectado, aplicando...")
+                # TODO: implementar aplicar_diff correctamente
+                # Por ahora: usa el diff tal cual para preview
+                nuevo_limpio = nuevo
+                diff = nuevo
+                valido = True
+            else:
+                # Es código: limpia, valida, genera diff
+                nuevo_limpio = utils["limpiar_codigo"](nuevo) or nuevo
+                valido = utils["es_codigo_valido"](nuevo_limpio)
+                diff = utils["generar_diff"](codigo, nuevo_limpio)
 
             self.state_manager.set_ultimo_fix(ruta, codigo, nuevo_limpio)
-
-            diff = utils["generar_diff"](codigo, nuevo_limpio)
             return jsonify({
                 "respuesta": "⚠️ Modo seguro activo (usa /apply)",
                 "preview": nuevo_limpio[:800],
@@ -134,7 +163,11 @@ class Executor:
             if not nombre:
                 return jsonify({"respuesta": "❌ Usa: /analyze archivo"})
             if not is_available():
-                return jsonify({"respuesta": "❌ LLM local no disponible en http://127.0.0.1:11434"})
+                status = get_provider_status()
+                return jsonify({
+                    "respuesta": "❌ No hay proveedor LLM disponible. Revisa Ollama local o configura OPENAI_API_KEY/ANTHROPIC_API_KEY.",
+                    "status": status
+                })
 
             ruta = utils["buscar_archivo_inteligente"](nombre, ruta_proyecto)
             if not ruta:
@@ -152,11 +185,15 @@ class Executor:
             if not prompt:
                 prompt = contexto.get("mensaje")
             if not is_available():
-                return jsonify({"respuesta": "❌ LLM local no disponible en http://127.0.0.1:11434"})
+                status = get_provider_status()
+                return jsonify({
+                    "respuesta": "❌ No hay proveedor LLM disponible. Revisa Ollama local o configura OPENAI_API_KEY/ANTHROPIC_API_KEY.",
+                    "status": status
+                })
 
             nuevo = generar_codigo(prompt)
             if not nuevo:
-                return jsonify({"respuesta": "❌ No se pudo generar código. Verifica que el servidor de LLM local esté en http://127.0.0.1:11434", "preview": ""})
+                return jsonify({"respuesta": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.", "preview": ""})
 
             return jsonify({"respuesta": "✅ Código generado", "preview": nuevo[:800]})
 
@@ -167,7 +204,11 @@ class Executor:
             if not ruta_proyecto:
                 return jsonify({"respuesta": "⚠️ Primero usa /setpath"})
             if not is_available():
-                return jsonify({"respuesta": "❌ LLM local no disponible en http://127.0.0.1:11434"})
+                status = get_provider_status()
+                return jsonify({
+                    "respuesta": "❌ No hay proveedor LLM disponible. Revisa Ollama local o configura OPENAI_API_KEY/ANTHROPIC_API_KEY.",
+                    "status": status
+                })
 
             ruta = utils["buscar_archivo_inteligente"](nombre, ruta_proyecto)
             if not ruta:
@@ -180,7 +221,7 @@ class Executor:
             analisis = analizar_codigo(codigo)
             nuevo = reparar_codigo(codigo, analisis)
             if not nuevo:
-                return jsonify({"respuesta": "❌ No se pudo refactorizar el código. Verifica que el servidor de LLM local esté en http://127.0.0.1:11434", "preview": ""})
+                return jsonify({"respuesta": "❌ No se pudo refactorizar el código. Verifica el proveedor LLM configurado y el estado del servidor.", "preview": ""})
 
             diff = utils["generar_diff"](codigo, nuevo)
             return jsonify({

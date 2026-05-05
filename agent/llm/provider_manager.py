@@ -3,7 +3,7 @@ Manager de proveedores LLM.
 Gestiona múltiples proveedores, fallbacks, routing, costos.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from agent.llm.config import LLMConfig, ProviderType
 from agent.llm.providers.base_provider import LLMResponse
 from agent.llm.providers.ollama_provider import OllamaProvider
@@ -68,8 +68,11 @@ class LLMProviderManager:
             use_case = "fix"  # Default
 
         route = self.config.USE_CASE_ROUTER[use_case]
-        primary_provider = route["primary"]
-        fallback_providers = route.get("fallback", [])
+        primary_provider = self.config.get_primary_provider(use_case)
+        fallback_providers = [
+            p for p in self.config.get_fallback_order()
+            if p != primary_provider
+        ]
 
         if max_tokens is None:
             max_tokens = route.get("max_tokens", 1200)

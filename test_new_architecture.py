@@ -124,10 +124,11 @@ except Exception as e:
     sys.exit(1)
 
 try:
-    # Test heuristic (local fixes)
-    codigo_test = "print(x)"
+    # Test heuristic (local fixes) - usa código que necesita fix real
+    codigo_test = "pd.DataFrame({'a': [1,2,3]})"
     resultado = retry._heuristic(codigo_test, "fix", 1000)
     assert resultado is not None
+    assert "import pandas" in resultado
     print("✅ Estrategia heurística funciona")
 except Exception as e:
     print(f"❌ Error: {e}")

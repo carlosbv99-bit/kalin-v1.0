@@ -1,6 +1,11 @@
 import os
 
-EXTENSIONES = [".py", ".dart", ".kt", ".java"]
+EXTENSIONES = {
+    ".py": "python",
+    ".dart": "flutter",
+    ".kt": "kotlin",
+    ".java": "java",
+}
 
 def escanear_proyecto(ruta_base):
     resultado = {
@@ -19,7 +24,7 @@ def escanear_proyecto(ruta_base):
             ruta = os.path.join(root, f)
             ext = os.path.splitext(f)[1].lower()
 
-            tipo = EXTENSIONES.get(ext)  # 👈 clave
+            tipo = EXTENSIONES.get(ext)
 
             if tipo:
                 resultado["archivos"].append(ruta)

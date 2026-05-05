@@ -143,7 +143,7 @@ Devuelve SOLO código válido. Sin charla.
             return False
 
         # Tiene contenido
-        if len(resultado.strip()) < 20:
+        if len(resultado.strip()) < 10:
             return False
 
         return True

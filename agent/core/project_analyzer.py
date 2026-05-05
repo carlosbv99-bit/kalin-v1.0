@@ -8,7 +8,7 @@ from typing import Dict, List, Set, Optional
 from pathlib import Path
 
 
-        class ProjectAnalyzer:
+class ProjectAnalyzer:
     def __init__(self, ruta_proyecto: str):
         self.ruta = os.path.abspath(ruta_proyecto)
         self.archivos: Dict[str, Dict] = {}  # ruta -> {tipo, size, ruta_absoluta}
@@ -95,15 +95,19 @@ from pathlib import Path
 
     def buscar_archivo(self, nombre: str, tipo_hint: Optional[str] = None) -> Optional[str]:
         """Busca un archivo por nombre, opcionalmente filtrado por tipo"""
-        nombre_lower = nombre.lower()
+        nombre_lower = nombre.lower().replace("/", os.sep).replace("\\", os.sep)
 
         for ruta, data in self.archivos.items():
             if tipo_hint and data["tipo"] != tipo_hint:
                 continue
 
+            ruta_normalized = ruta.lower().replace("/", os.sep).replace("\\", os.sep)
+            nombre_basename = os.path.basename(nombre_lower)
+
             if (
-                ruta.lower().endswith(nombre_lower)
+                ruta_normalized.endswith(nombre_lower)
                 or os.path.basename(ruta).lower() == nombre_lower
+                or os.path.basename(ruta).lower() == nombre_basename
             ):
                 return ruta
 

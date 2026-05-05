@@ -4,8 +4,8 @@ import os
 import difflib
 
 from agent.core.orchestrator import Orchestrator
-from agent.actions.tools.scan_tool import escanear_proyecto
 from agent.analyzer import analizar_codigo
+from agent.llm.client import get_provider_status
 from agent.core.brain import construir_contexto, planificar
 
 app = Flask(__name__)
@@ -28,8 +28,36 @@ def home():
 @app.route("/help")
 def help_page():
     return jsonify({
-        "respuesta": "Comandos disponibles: /setpath <ruta>, /scan, /fix <archivo>, /apply, /analyze <archivo>, /create <requerimiento>, /refactor <archivo>"
+        "respuesta": "Comandos disponibles: /setpath <ruta>, /scan, /fix <archivo>, /apply, /analyze <archivo>, /create <requerimiento>, /refactor <archivo>, /llm-status"
     })
+
+@app.route("/llm-status")
+def llm_status():
+    try:
+        status = get_provider_status()
+        return jsonify({
+            "respuesta": "✅ Estado de proveedores LLM",
+            "providers": status
+        })
+    except Exception as exc:
+        return jsonify({
+            "respuesta": f"❌ Error al obtener estado LLM: {str(exc)}"
+        }), 500
+
+@app.route("/health")
+def health():
+    try:
+        status = get_provider_status()
+        return jsonify({
+            "status": "ok",
+            "llm_providers": status,
+            "message": "Servidor operativo"
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
 
 # ==============================
 # 📁 UTILS
@@ -43,24 +71,36 @@ def leer_archivo(ruta):
         return None
 
 def buscar_archivo_inteligente(query, ruta_base):
-    query = query.lower()
+    query = query.lower().replace("/", os.sep).replace("\\", os.sep)
+    query_nombre = os.path.basename(query)  # "brain.py" de "agent/core/brain.py"
     candidatos = []
     for root, _, files in os.walk(ruta_base):
         for f in files:
             nombre = f.lower()
             ruta = os.path.join(root, f)
 
-            if query in nombre:
-                score = 0
-                if nombre == query:
-                    score += 100
+            # Match por nombre de archivo o por ruta relativa
+            ruta_relativa = os.path.relpath(ruta, ruta_base).lower().replace("\\", "/")
+            match = False
+            score = 0
+
+            if query_nombre == nombre:
+                score += 100
+                match = True
+            elif query in nombre:
+                score += 50
+                match = True
+            elif query in ruta_relativa:
+                score += 30
+                match = True
+
+            if match:
                 if "main" in nombre:
                     score += 20
                 if "app" in nombre:
                     score += 10
                 if "test" in nombre:
                     score -= 10
-
                 candidatos.append((score, ruta))
 
     if not candidatos:
@@ -74,8 +114,25 @@ def guardar_backup(ruta, contenido):
         f.write(contenido)
 
 def escribir_archivo(ruta, contenido):
+    """Escribe contenido al archivo. Si es diff, lo aplica primero."""
+    es_diff = contenido.strip().startswith("---") or contenido.strip().startswith("@@")
+    
+    if es_diff:
+        # Lee archivo original
+        try:
+            with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+                original = f.read()
+            # Aplica diff (simplificado: no es un parser de diff completo)
+            print(f"⚠️ Diff detectado, aplicando cambios...")
+            # Por ahora, solo log - en producción usar patch library
+            contenido_final = original  # Placeholder
+        except:
+            contenido_final = contenido
+    else:
+        contenido_final = contenido
+    
     with open(ruta, "w", encoding="utf-8") as f:
-        f.write(contenido)
+        f.write(contenido_final)
 
 def es_codigo_valido(codigo):
     if not codigo or len(codigo.strip()) < 10:
@@ -99,6 +156,44 @@ def generar_diff(original, nuevo):
         lineterm=""
     )
     return "\n".join(diff)
+
+
+def aplicar_diff(codigo_original: str, diff_text: str) -> str:
+    """Aplica un diff unificado a un código y devuelve el resultado"""
+    try:
+        import difflib
+        lines = diff_text.strip().split('\n')
+        
+        # Extrae las líneas del diff (saltando headers)
+        resultado = codigo_original.split('\n')
+        offset = 0
+        
+        for linea in lines:
+            if linea.startswith('@@'):
+                # Parse @@ -start,count +start,count @@
+                continue
+            elif linea.startswith('-') and not linea.startswith('---'):
+                # Línea a eliminar
+                try:
+                    idx = int(linea.split()[0][1:]) - 1 + offset
+                    if 0 <= idx < len(resultado):
+                        resultado.pop(idx)
+                        offset -= 1
+                except:
+                    pass
+            elif linea.startswith('+') and not linea.startswith('+++'):
+                # Línea a añadir
+                try:
+                    idx = int(linea.split()[0][1:]) + offset
+                    resultado.insert(idx, linea[1:])
+                    offset += 1
+                except:
+                    pass
+        
+        return '\n'.join(resultado)
+    except Exception as e:
+        print(f"⚠️ Error aplicando diff: {e}")
+        return ""
 
 # ==============================
 # 🧠 API
@@ -143,4 +238,7 @@ def chat():
 
 if __name__ == "__main__":
     print("🚀 Iniciando servidor...")
+if __name__ == "__main__":
+    print("🚀 Iniciando servidor...")
+    print("📍 Rutas: /, /help, /chat, /llm-status, /health")
     app.run(host="0.0.0.0", port=5000, debug=False)

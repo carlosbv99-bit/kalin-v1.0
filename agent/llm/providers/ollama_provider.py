@@ -8,6 +8,30 @@ from typing import Optional, Dict, Any
 from agent.llm.providers.base_provider import BaseLLMProvider, LLMResponse
 
 
+def call_ollama(prompt: str):
+    try:
+        response = requests.post(
+            "http://127.0.0.1:11434/api/generate",
+            json={
+                "model": "deepseek-coder:latest",
+                "prompt": prompt,
+                "stream": False,      # 🔥 SOLUCIÓN
+                "num_predict": 4000
+            },
+            timeout=180
+        )
+
+        response.raise_for_status()
+        data = response.json()
+
+        return data.get("response", "")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 class OllamaProvider(BaseLLMProvider):
     """Proveedor Ollama - LLM local"""
 
@@ -30,6 +54,7 @@ class OllamaProvider(BaseLLMProvider):
                     "model": self.model,
                     "prompt": prompt,
                     "stream": False,
+                    "num_predict": 4000,
                     "options": {
                         "num_predict": max_tokens,
                         "temperature": 0.2
@@ -42,11 +67,14 @@ class OllamaProvider(BaseLLMProvider):
                 return None
 
             data = response.json()
-            text = (data.get("response") or "").strip()
+            text = data.get("response", "").strip()
 
             if not text:
+                print("⚠️ Respuesta vacía de Ollama")
+                print("🧠 RAW OLLAMA:", data)
                 return None
 
+            print("🧠 RAW OLLAMA:", data)
             return LLMResponse(
                 text=text,
                 provider="ollama",
