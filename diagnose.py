@@ -1,4 +1,4 @@
-"""
+﻿"""
 Script de diagnóstico automático del proyecto
 Identifica todos los problemas antes de ejecutar tests
 """
@@ -30,7 +30,7 @@ def check_import(module_name, description):
         return False
 
 def main():
-    print_section("DIAGNÓSTICO DEL PROYECTO AGENTE-IA2")
+    print_section("DIAGNÓSTICO DEL PROYECTO KALIN")
     
     project_root = Path(__file__).parent
     print(f"\n📁 Directorio del proyecto: {project_root}")

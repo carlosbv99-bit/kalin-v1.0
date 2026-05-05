@@ -1,4 +1,4 @@
-"""
+﻿"""
 Estado mínimo y persistente del agente.
 - Último archivo procesado
 - Ruta del proyecto

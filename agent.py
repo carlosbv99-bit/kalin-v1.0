@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import requests
 
@@ -183,7 +183,7 @@ def procesar_archivo(ruta):
 # 💬 CHAT INTERACTIVO
 # ==============================
 def chat():
-    print("🤖 Agente IA PRO (comandos: /fix /analyze /design)\n")
+    print("🤖 Kalin PRO (comandos: /fix /analyze /design)\n")
 
     ruta_proyecto = input("📂 Ruta del proyecto: ").strip()
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ESCALABILIDAD MULTI-LLMS: RESUMEN IMPLEMENTADO
 ===============================================
 
@@ -97,11 +97,11 @@ CÓMO USAR
 PASO 1: Variables de entorno (.env)
 
 # Desarrollo
-AGENTE_MODE=local
+KALIN_MODE=local
 OLLAMA_ENDPOINT=http://127.0.0.1:11434
 
 # Producción
-AGENTE_MODE=cloud
+KALIN_MODE=cloud
 OPENAI_API_KEY=sk-proj-xxxxx
 ANTHROPIC_API_KEY=sk-ant-xxxxx
 

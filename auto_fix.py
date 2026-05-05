@@ -1,7 +1,7 @@
-import os
+﻿import os
 from agent import app
 
-CARPETA_PROYECTO = "E:\\agente\\mi_app"
+CARPETA_PROYECTO = "E:\\kalin\\mi_app"
 
 IGNORAR = ["agent.py", "main.py", "auto_fix.py"]
 EXCLUIR_CARPETAS = ["build", ".gradle", ".idea"]

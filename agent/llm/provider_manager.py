@@ -29,6 +29,7 @@ class LLMProviderManager:
         """Inicializa los proveedores disponibles"""
         provider_classes = {
             ProviderType.OLLAMA: OllamaProvider,
+            ProviderType.OLLAMA_CHAT: OllamaProvider,  # Usa la misma clase pero diferente modelo
             ProviderType.OPENAI: OpenAIProvider,
             ProviderType.ANTHROPIC: AnthropicProvider,
         }
@@ -50,35 +51,52 @@ class LLMProviderManager:
         Genera respuesta usando routing inteligente + fallbacks.
 
         Estrategia:
-        1. Intenta proveedor primario para el use_case
-        2. Si falla: intenta fallbacks en orden
-        3. Si todo falla: retorna None
+        1. Selecciona proveedor según tipo de tarea (chat vs código)
+        2. Intenta proveedor primario para el use_case
+        3. Si falla: intenta fallbacks en orden
+        4. Si todo falla: retorna None
 
         Args:
             prompt: Texto a procesar
-            use_case: "fix", "create", "enhance", "design", etc.
+            use_case: "fix", "create", "enhance", "design", "chat", etc.
             max_tokens: Máximo tokens (o usa default del use_case)
 
         Returns:
             LLMResponse o None si falla todo
         """
 
+        # ROUTING INTELIGENTE: Seleccionar modelo según tipo de tarea
+        if use_case in ["chat", "greeting", "help"]:
+            # Para conversaciones, usar SOLO modelo especializado en chat
+            # NO permitir fallback a modelos de código
+            selected_provider = ProviderType.OLLAMA_CHAT
+            allow_fallback = False  # CRÍTICO: No hacer fallback para chat
+        else:
+            # Para código, usar modelo especializado en código
+            selected_provider = self.config.get_primary_provider(use_case)
+            allow_fallback = True  # Permitir fallback para tareas técnicas
+
         # Obtén configuración para este use_case
         if use_case not in self.config.USE_CASE_ROUTER:
             use_case = "fix"  # Default
 
         route = self.config.USE_CASE_ROUTER[use_case]
-        primary_provider = self.config.get_primary_provider(use_case)
-        fallback_providers = [
-            p for p in self.config.get_fallback_order()
-            if p != primary_provider
-        ]
+        
+        if allow_fallback:
+            # Para código: intentar otros proveedores si falla el principal
+            fallback_providers = [
+                p for p in self.config.get_fallback_order()
+                if p != selected_provider
+            ]
+        else:
+            # Para chat: NO fallback, solo usar OLLAMA_CHAT
+            fallback_providers = []
 
         if max_tokens is None:
             max_tokens = route.get("max_tokens", 1200)
 
         # Construye lista de proveedores a intentar
-        providers_to_try = [primary_provider] + fallback_providers
+        providers_to_try = [selected_provider] + fallback_providers
 
         self.stats["total_requests"] += 1
 
@@ -92,7 +110,14 @@ class LLMProviderManager:
             # Verifica disponibilidad
             if not provider.is_available():
                 self._record_error(provider_type, "not_available")
+                print(f"⚠️ Provider {provider_type.value} no disponible")
                 continue
+
+            # DEBUG: Mostrar qué modelo se está usando
+            if use_case in ["chat", "greeting", "help"]:
+                print(f"💬 CHAT: Usando {provider_type.value} ({provider.model})")
+            else:
+                print(f"⚙️ CÓDIGO: Usando {provider_type.value} ({provider.model})")
 
             # Intenta generar
             try:
@@ -104,9 +129,11 @@ class LLMProviderManager:
                     return response
                 else:
                     self._record_error(provider_type, "generation_failed")
+                    print(f"❌ {provider_type.value} falló en generar respuesta")
 
             except Exception as e:
                 self._record_error(provider_type, str(e))
+                print(f"❌ Error en {provider_type.value}: {e}")
                 continue
 
         # Si llegamos aquí, todos fallaron

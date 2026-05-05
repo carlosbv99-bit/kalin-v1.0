@@ -1,4 +1,4 @@
-from agent.llm.client import generate
+﻿from agent.llm.client import generate
 
 def es_chatbot(respuesta: str) -> bool:
     if not respuesta:

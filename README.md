@@ -1,26 +1,24 @@
-# \# Agente-IA2
+﻿# \# Kalin
 
 # 
 
-# Sistema autónomo de desarrollo con IA multi-LLM (Ollama, OpenAI, Anthropic).
+# Sistema autonomo de desarrollo con IA multi-LLM.
 
 # 
 
-# \## Características
+# \## Caracteristicas
 
 # 
 
-# \- Reparación automática de código
+# \- Reparacion automatica de codigo
 
-# \- Generación desde texto natural
-
-# \- Análisis y refactorización
+# \- Generacion desde texto natural
 
 # \- Tests funcionales completos (4/4 passing)
 
 # 
 
-# \## Instalación
+# \## Instalacion
 
 # 
 

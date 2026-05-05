@@ -17,7 +17,7 @@ def test_brain_basico():
         ("/fix main.py", "fix"),
         ("/scan", "scan"),
         ("/help", "help"),
-        ("hola", "chat"),
+        ("hola", "greeting"),
         ("/setpath E:\\test", "setpath"),
     ]
     
@@ -115,6 +115,7 @@ def test_orchestrator():
     
     from agent.core.orchestrator import Orchestrator
     from web import app
+    from flask import jsonify
     
     orch = Orchestrator()
     
@@ -128,10 +129,11 @@ def test_orchestrator():
             "es_codigo_valido": lambda x: True,
             "guardar_backup": lambda x, y: None,
             "escribir_archivo": lambda x, y: None,
-            "analizar_codigo": lambda x: {}
+            "analizar_codigo": lambda x: {},
+            "jsonify": jsonify
         }
         
-        estado = {"ruta_proyecto": None, "ultimo_fix": None}
+        estado = {"ruta_proyecto": None, "ultimo_fix": None, "session_id": "test_session"}
         
         response = orch.handle("/help", estado, utils)
         assert response.status_code == 200

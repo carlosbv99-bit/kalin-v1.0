@@ -1,4 +1,4 @@
-"""
+﻿"""
 CHECKLIST: ANTES DE SUBIR A CLOUD
 ==================================
 
@@ -36,7 +36,7 @@ Pasos:
    cp .env.example .env.local
    
    Editar:
-   AGENTE_MODE=local
+   KALIN_MODE=local
    OLLAMA_ENDPOINT=http://127.0.0.1:11434
 
 2. Solicitar API keys (toma 5-10 minutos):
@@ -55,7 +55,7 @@ Pasos:
    cp .env.example .env.production
    
    Editar:
-   AGENTE_MODE=cloud
+   KALIN_MODE=cloud
    OPENAI_API_KEY=sk-proj-xxxxx
    ANTHROPIC_API_KEY=sk-ant-xxxxx
    OLLAMA_ENDPOINT=http://internal-ollama:11434  # Si tienes

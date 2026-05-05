@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST: Múltiples proveedores LLM
 
 Verifica que:
@@ -124,11 +124,11 @@ PRÓXIMOS PASOS:
 1. Configura variables de entorno (.env):
    
    # Para desarrollo (Ollama local):
-   export AGENTE_MODE=local
+   export KALIN_MODE=local
    export OLLAMA_ENDPOINT=http://127.0.0.1:11434
    
    # Para producción (OpenAI):
-   export AGENTE_MODE=cloud
+   export KALIN_MODE=cloud
    export OPENAI_API_KEY=sk-proj-xxxxx
 
 2. Usa el agente como antes:

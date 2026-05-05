@@ -1,0 +1,36 @@
+{
+  "session_id": "session_1777998815",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1777998815.7893116,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998815.806496,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "eres programador?",
+      "timestamp": 1777998827.6234326,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998827.689702,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-05T18:33:35.787164",
+    "last_activity": "2026-05-05T18:33:47.689702",
+    "message_count": 4
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "timestamp": 1778015195.439559,
+  "status": "healthy",
+  "checks": {
+    "flask_server": true,
+    "llm_provider": true,
+    "database": true,
+    "memory": true
+  }
+}

@@ -103,14 +103,17 @@ Devuelve SOLO código válido. Sin charla.
         import re
 
         nuevos = codigo
+        modificado = False
 
         # Fix 1: Imports faltantes
         if "pd." in nuevos and "import pandas" not in nuevos:
             nuevos = "import pandas as pd\n" + nuevos
+            modificado = True
 
         # Fix 2: Variables indefinidas simples
         if "np." in nuevos and "import numpy" not in nuevos:
             nuevos = "import numpy as np\n" + nuevos
+            modificado = True
 
         # Fix 3: Indentación
         lineas = nuevos.split("\n")
@@ -122,7 +125,8 @@ Devuelve SOLO código válido. Sin charla.
         # Fix 4: Sintaxis común
         nuevos = re.sub(r"print\s*\(([^)]+)\)", r"print(\1)", nuevos)
 
-        return nuevos if nuevos != codigo else None
+        # Retorna el código incluso si no hubo modificaciones
+        return nuevos
 
     def _emergency(self, codigo: str, objetivo: str, max_tokens: int) -> Optional[str]:
         """Fallback extremo: retorna original con warning"""

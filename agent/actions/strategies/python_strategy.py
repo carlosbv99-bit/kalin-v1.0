@@ -1,4 +1,4 @@
-"""
+﻿"""
 Estrategia para procesar archivos Python.
 Especializada en: reparación, testing, optimización.
 """

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Estrategia para diseñar/mejorar proyectos completos.
 Entiende contexto: dependencias, estructura, requisitos.
 """

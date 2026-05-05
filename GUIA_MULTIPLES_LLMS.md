@@ -1,4 +1,4 @@
-"""
+﻿"""
 GUÍA: MÚLTIPLES PROVEEDORES LLM
 ================================
 
@@ -61,12 +61,12 @@ CÓMO USAR
 PASO 1: Configurar variables de entorno
 
 # Desarrollo (local - Ollama)
-AGENTE_MODE=local
+KALIN_MODE=local
 OLLAMA_ENDPOINT=http://127.0.0.1:11434
 OLLAMA_MODEL=deepseek-coder
 
 # Producción (cloud - OpenAI)
-AGENTE_MODE=cloud
+KALIN_MODE=cloud
 OPENAI_API_KEY=sk-proj-xxxxx
 OPENAI_MODEL=gpt-4-turbo
 ANTHROPIC_API_KEY=sk-ant-xxxxx  # Fallback

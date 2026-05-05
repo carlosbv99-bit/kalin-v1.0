@@ -1,4 +1,4 @@
-from agent.llm.client import generate
+﻿from agent.llm.client import generate
 
 def analizar_codigo(codigo):
     codigo = codigo[:2000]

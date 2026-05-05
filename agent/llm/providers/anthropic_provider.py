@@ -1,4 +1,4 @@
-"""
+﻿"""
 Implementación de Anthropic (Claude).
 Para usar en cloud como fallback de OpenAI.
 """

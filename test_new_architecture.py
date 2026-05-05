@@ -1,4 +1,4 @@
-"""
+﻿"""
 Script de prueba para validar la nueva arquitectura.
 Esto verifica que todos los módulos nuevos funcionan sin romper lo existente.
 """

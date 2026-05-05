@@ -1,4 +1,4 @@
-"""
+﻿"""
 DEPLOYMENTS: Configuraciones predefinidas para diferentes entornos
 
 Copy-paste según tu entorno.
@@ -21,7 +21,7 @@ Archivo: .env.local
 
 DEVELOPMENT_CONFIG = """
 # Desarrollo
-AGENTE_MODE=local
+KALIN_MODE=local
 OLLAMA_ENDPOINT=http://127.0.0.1:11434
 OLLAMA_MODEL=deepseek-coder
 
@@ -46,7 +46,7 @@ Archivo: .env.staging
 
 STAGING_CONFIG = """
 # Staging
-AGENTE_MODE=cloud
+KALIN_MODE=cloud
 OPENAI_API_KEY=sk-proj-staging-key
 OPENAI_MODEL=gpt-4-turbo
 ANTHROPIC_API_KEY=sk-ant-staging-key
@@ -77,7 +77,7 @@ Características:
 
 PRODUCTION_TIER1_CONFIG = """
 # Producción Tier 1
-AGENTE_MODE=cloud
+KALIN_MODE=cloud
 OPENAI_API_KEY=sk-proj-prod-key
 OPENAI_MODEL=gpt-4-turbo
 ANTHROPIC_API_KEY=sk-ant-prod-key
@@ -110,7 +110,7 @@ Características:
 
 PRODUCTION_TIER2_CONFIG = """
 # Producción Tier 2 (cost-optimized)
-AGENTE_MODE=cloud
+KALIN_MODE=cloud
 HF_API_KEY=hf_prod_key
 HF_MODEL=meta-llama/Llama-2-70b-chat-hf
 OPENAI_API_KEY=sk-proj-prod-key
@@ -180,7 +180,7 @@ Características:
 
 ENTERPRISE_CONFIG = """
 # Enterprise (on-premise only)
-AGENTE_MODE=local
+KALIN_MODE=local
 OLLAMA_ENDPOINT=https://internal-ollama.corp.com:11434
 OLLAMA_MODEL=custom-model-v1-7b
 
@@ -221,7 +221,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      AGENTE_MODE: local
+      KALIN_MODE: local
       OLLAMA_ENDPOINT: http://ollama:11434
     depends_on:
       - ollama
@@ -245,7 +245,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      AGENTE_MODE: cloud
+      KALIN_MODE: cloud
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LOG_LEVEL: WARNING

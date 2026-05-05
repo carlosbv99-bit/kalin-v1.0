@@ -1,4 +1,4 @@
-"""
+﻿"""
 Strategies: módulo con estrategias especializadas por tipo de código.
 """
 

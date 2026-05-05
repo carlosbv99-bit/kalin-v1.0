@@ -1,4 +1,4 @@
-"""
+﻿"""
 Interfaz abstracta para proveedores LLM.
 
 Todos los proveedores (Ollama, OpenAI, Claude, etc.) implementan esta interfaz.

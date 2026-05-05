@@ -1,0 +1,72 @@
+{
+  "session_id": "session_1777998649",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1777998649.12821,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998649.1907308,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "eres llama?",
+      "timestamp": 1777998661.7536697,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998661.7690203,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "sabes programar?",
+      "timestamp": 1777998670.9890957,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998671.0054865,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1777998673.5984182,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998673.643376,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "quiero crear una aplicacion para android sobre una agenda",
+      "timestamp": 1777998694.8367863,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998694.8756251,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-05T18:30:49.126854",
+    "last_activity": "2026-05-05T18:31:34.875625",
+    "message_count": 10
+  }
+}

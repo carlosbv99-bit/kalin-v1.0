@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import os
 from agent import app
 
@@ -124,7 +124,7 @@ def compilar_proyecto():
 
     result = subprocess.run(
         [".\\gradlew.bat", "build"],
-        cwd="E:\\agente\\mi_app_android1",
+        cwd="E:\\kalin\\mi_app_android1",
         capture_output=True,
         text=True
     )

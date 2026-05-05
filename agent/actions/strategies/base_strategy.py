@@ -1,4 +1,4 @@
-"""
+﻿"""
 Estrategias base para procesar código según su tipo.
 Patrón Strategy: cada tipo de código tiene su propia lógica.
 """

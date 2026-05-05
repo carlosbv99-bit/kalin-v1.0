@@ -1,4 +1,4 @@
-"""
+﻿"""
 DIAGRAMA DE ARQUITECTURA VISUAL
 ===============================
 
@@ -380,7 +380,7 @@ SUMA: 2-3x mejor rendimiento, 10x mejor confiabilidad
 
 """
 ┌─────────────────────────────────────────────────────────────────┐
-│                   AGENTE IA LOCAL V2                            │
+│                   Kalin LOCAL V2                            │
 │                                                                 │
 │  ┌────────────────┐  ┌──────────────┐  ┌───────────────┐       │
 │  │ STATE MANAGER  │  │ RETRY ENGINE │  │PROJECT ANALYZER

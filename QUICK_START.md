@@ -1,4 +1,4 @@
-"""
+﻿"""
 QUICK START - CÓMO USAR LA NUEVA ARQUITECTURA
 ==============================================
 
@@ -11,7 +11,7 @@ Aquí está todo lo que necesitas saber para empezar AHORA MISMO.
 
 """
 En terminal:
-    cd e:\agente
+    cd e:\kalin
     python test_new_architecture.py
 
 Debe mostrar:

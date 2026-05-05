@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # Cargar .env ANTES de cualquier import
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
@@ -7,9 +10,29 @@ from agent.core.orchestrator import Orchestrator
 from agent.analyzer import analizar_codigo
 from agent.llm.client import get_provider_status
 from agent.core.brain import construir_contexto, planificar
+from agent.core.security_hardening import NetworkSecurity, CredentialManager
+from agent.core.stability import health_monitor, performance_optimizer
 
+# Inicializar Flask con configuración segura
 app = Flask(__name__)
-CORS(app)
+
+# CORS: Permitir requests desde el mismo origen (necesario para desarrollo)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",  # En desarrollo, permitir todos los orígenes
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
+
+# SEGURIDAD: Agregar headers de seguridad en todas las respuestas
+@app.after_request
+def add_security_headers(response):
+    # NO agregar headers de seguridad que puedan interferir con CORS
+    # Solo agregar headers básicos
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
 
 orchestrator = Orchestrator()
 
@@ -47,11 +70,37 @@ def llm_status():
 @app.route("/health")
 def health():
     try:
-        status = get_provider_status()
+        # Health check completo con monitoreo
+        health_status = health_monitor.check_health()
+        
+        status_code = 200 if health_status['status'] == 'healthy' else 503
+        
         return jsonify({
-            "status": "ok",
-            "llm_providers": status,
-            "message": "Servidor operativo"
+            "status": health_status['status'],
+            "llm_providers": get_provider_status(),
+            "checks": health_status.get('checks', {}),
+            "message": "Servidor operativo" if health_status['status'] == 'healthy' else "Sistema degradado",
+            "timestamp": health_status.get('timestamp')
+        }), status_code
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/system-status")
+def system_status():
+    """Estado completo del sistema con recomendaciones"""
+    try:
+        health_status = health_monitor.check_health()
+        requirements = performance_optimizer.check_system_requirements()
+        tips = performance_optimizer.get_performance_tips()
+        
+        return jsonify({
+            "health": health_status,
+            "requirements": requirements,
+            "tips": tips,
+            "recovery_suggestions": health_monitor.get_recovery_suggestions(health_status)
         })
     except Exception as exc:
         return jsonify({
@@ -219,7 +268,8 @@ def chat():
         "es_codigo_valido": es_codigo_valido,
         "guardar_backup": guardar_backup,
         "escribir_archivo": escribir_archivo,
-        "analizar_codigo": analizar_codigo
+        "analizar_codigo": analizar_codigo,
+        "jsonify": jsonify
     }
 
     try:
@@ -237,8 +287,21 @@ def chat():
 # ==============================
 
 if __name__ == "__main__":
+    # Configuración desde .env con valores seguros por defecto
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_PORT', '5000'))
+    debug = os.getenv('FLASK_DEBUG', '0').lower() in ('1', 'true', 'yes')
+    
     print("🚀 Iniciando servidor...")
-if __name__ == "__main__":
-    print("🚀 Iniciando servidor...")
-    print("📍 Rutas: /, /help, /chat, /llm-status, /health")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    print(f"📍 Host: {host}")
+    print(f"📍 Puerto: {port}")
+    print(f"📍 Debug: {debug}")
+    print(f"📍 URL: http://{host}:{port}")
+    print("📍 Rutas: /, /help, /chat, /llm-status, /health, /system-status")
+    
+    # SEGURIDAD: Validar configuración antes de iniciar
+    if host == '0.0.0.0' and not debug:
+        print("\n⚠️  ADVERTENCIA: Servidor expuesto a todas las interfaces")
+        print("   Para producción, usa un reverse proxy (nginx) con HTTPS")
+    
+    app.run(host=host, port=port, debug=debug)

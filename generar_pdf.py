@@ -1,4 +1,4 @@
-from fpdf import FPDF
+﻿from fpdf import FPDF
 
 class InformePDF(FPDF):
     def __init__(self):
@@ -8,7 +8,7 @@ class InformePDF(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 16)
         self.set_text_color(33, 33, 33)
-        self.cell(0, 10, 'Informe Tecnico - Agente-IA2', new_x='LMARGIN', new_y='NEXT', align='C')
+        self.cell(0, 10, 'Informe Tecnico - Kalin', new_x='LMARGIN', new_y='NEXT', align='C')
         self.set_font('Helvetica', 'I', 10)
         self.cell(0, 5, 'Sistema Autonomo de Desarrollo con IA', new_x='LMARGIN', new_y='NEXT', align='C')
         self.ln(5)
@@ -57,13 +57,13 @@ def generar_informe():
     pdf.set_font('Helvetica', 'B', 18)
     pdf.cell(0, 10, 'INFORME TECNICO DEL PROYECTO', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 8, 'Agente-IA2 - Sistema Autonomo de Desarrollo con IA', new_x='LMARGIN', new_y='NEXT', align='C')
+    pdf.cell(0, 8, 'Kalin - Sistema Autonomo de Desarrollo con IA', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.ln(5)
     
     # Metadatos
     pdf.set_font('Helvetica', 'I', 10)
     pdf.cell(0, 6, 'Fecha: 5 de mayo, 2026', new_x='LMARGIN', new_y='NEXT', align='C')
-    pdf.cell(0, 6, 'Ubicacion: E:\\agente', new_x='LMARGIN', new_y='NEXT', align='C')
+    pdf.cell(0, 6, 'Ubicacion: E:\\kalin', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.cell(0, 6, 'Version: 1.0', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.ln(10)
     
@@ -72,7 +72,7 @@ def generar_informe():
     
     pdf.section_title('1.1 Proposito del Proyecto')
     pdf.section_body(
-        "Agente-IA2 es un sistema autonomo de asistencia en desarrollo de "
+        "Kalin es un sistema autonomo de asistencia en desarrollo de "
         "software basado en Inteligencia Artificial. Permite analizar, reparar, "
         "generar y refactorizar codigo de forma automatica mediante el uso de "
         "multiples proveedores de LLM (Large Language Models)."
@@ -232,11 +232,11 @@ def generar_informe():
     pdf.chapter_title('7', 'CONFIGURACION')
     
     pdf.section_title('7.1 Variables de Entorno para Desarrollo')
-    codigo_env = "AGENTE_MODE=local\nOLLAMA_ENDPOINT=http://127.0.0.1:11434\nOLLAMA_MODEL=deepseek-coder"
+    codigo_env = "KALIN_MODE=local\nOLLAMA_ENDPOINT=http://127.0.0.1:11434\nOLLAMA_MODEL=deepseek-coder"
     pdf.add_code_block(codigo_env)
     
     pdf.section_title('7.2 Variables de Entorno para Produccion')
-    codigo_prod = "AGENTE_MODE=cloud\nOPENAI_API_KEY=sk-proj-xxxxxxxxxxxx\nOPENAI_MODEL=gpt-4-turbo\nANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx"
+    codigo_prod = "KALIN_MODE=cloud\nOPENAI_API_KEY=sk-proj-xxxxxxxxxxxx\nOPENAI_MODEL=gpt-4-turbo\nANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx"
     pdf.add_code_block(codigo_prod)
     
     pdf.section_title('7.3 Ejecucion')
@@ -247,7 +247,7 @@ def generar_informe():
     pdf.chapter_title('8', 'ESTRUCTURA DE ARCHIVOS')
     
     pdf.section_body(
-        "E:\\agente\\\n"
+        "E:\\kalin\\\n"
         "|\n"
         "+-- agent/\n"
         "|   +-- core/          # Componentes centrales\n"
@@ -335,7 +335,7 @@ def generar_informe():
     pdf.chapter_title('12', 'CONCLUSION')
     
     pdf.section_body(
-        "Agente-IA2 es un sistema prometedor con arquitectura solida y modular. "
+        "Kalin es un sistema prometedor con arquitectura solida y modular. "
         "Su mayor fortaleza es el sistema multi-LLM con fallback automatico, "
         "que garantiza disponibilidad incluso cuando proveedores cloud fallan.\n\n"
         "Puntos fuertes:\n"
@@ -359,7 +359,7 @@ def generar_informe():
     pdf.output(nombre_archivo)
     print(f"\n✅ PDF generado exitosamente!")
     print(f"📄 Archivo: {nombre_archivo}")
-    print(f"📍 Ubicacion: E:\\agente\\{nombre_archivo}")
+    print(f"📍 Ubicacion: E:\\kalin\\{nombre_archivo}")
     print(f"\n¡Abre el archivo PDF con cualquier visor de PDF!")
 
 if __name__ == '__main__':

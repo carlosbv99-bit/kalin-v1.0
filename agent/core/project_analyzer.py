@@ -1,4 +1,4 @@
-"""
+﻿"""
 Analizador de proyectos: mapea estructura, dependencias y tipos.
 Permite al agente entender el contexto completo.
 """

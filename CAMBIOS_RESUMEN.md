@@ -1,4 +1,4 @@
-"""
+﻿"""
 RESUMEN DE CAMBIOS - LISTA COMPLETA
 ====================================
 

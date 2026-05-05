@@ -1,10 +1,26 @@
 """Test de endpoints REST del agente"""
 import requests
 import json
+import sys
 
 base = 'http://127.0.0.1:5000'
 passed = 0
 failed = 0
+
+# Verificar si el servidor está corriendo
+try:
+    r = requests.get(f"{base}/health", timeout=2)
+    print("✅ Servidor detectado en http://127.0.0.1:5000")
+except:
+    print("❌ ERROR: El servidor no está corriendo en http://127.0.0.1:5000")
+    print("   Para ejecutar este test, primero inicia el servidor con:")
+    print("   python run.py")
+    print("\n   O usa los otros tests que no requieren servidor:")
+    print("   - test_funcional.py")
+    print("   - test_llm_providers.py")
+    print("   - test_new_architecture.py")
+    print("   - test_new_components.py")
+    sys.exit(1)
 
 def test_endpoint(name, method, path, json_data=None, expect_status=200, timeout=10):
     global passed, failed
@@ -82,7 +98,7 @@ print("\n🧠 COMANDOS VIA /chat:")
 test_command("Help", "/help")
 
 # Setpath
-test_command("Setpath", "/setpath e:\\agente")
+test_command("Setpath", "/setpath E:\\kalin")
 
 # Scan
 test_command("Scan", "/scan", timeout=30)

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Implementación de OpenAI (GPT-4, GPT-3.5).
 Para usar en cloud/producción.
 """

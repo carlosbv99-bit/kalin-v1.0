@@ -1,0 +1,48 @@
+{
+  "session_id": "session_1777998057",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1777998057.949488,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998058.0030034,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "quiero crear una apliacion android de agenda multiusuario",
+      "timestamp": 1777998078.9778483,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998079.048965,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "puedes ayudarme a crear una aplicacion android?",
+      "timestamp": 1777998105.673831,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "👋 ¡Hola! Soy Kalin, tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1777998105.713852,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-05T18:20:57.948395",
+    "last_activity": "2026-05-05T18:21:45.713851",
+    "message_count": 6
+  }
+}

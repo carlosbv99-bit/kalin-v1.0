@@ -6,6 +6,7 @@ import os
 class ProviderType(Enum):
     """Tipos de proveedores LLM soportados"""
     OLLAMA = "ollama"
+    OLLAMA_CHAT = "ollama_chat"  # Modelo especializado para chat
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     AZURE = "azure"
@@ -21,7 +22,7 @@ class LLMConfig:
     # local  -> solo Ollama
     # hybrid -> Ollama + fallback cloud
     # cloud  -> solo cloud
-    MODE = os.getenv("AGENTE_MODE", "local").lower()
+    MODE = os.getenv("KALIN_MODE", "local").lower()
 
     # =========================
     # PROVEEDORES
@@ -32,6 +33,14 @@ class LLMConfig:
             "model": os.getenv("OLLAMA_MODEL", "deepseek-coder:latest"),
             "api_key": None,
             "timeout": int(os.getenv("OLLAMA_TIMEOUT", 180)),  # 🔥 más margen local
+            "cost_per_1k": 0,
+        },
+        # Modelo especializado para CHAT/CONVERSACIÓN
+        ProviderType.OLLAMA_CHAT: {
+            "endpoint": os.getenv("OLLAMA_ENDPOINT", "http://127.0.0.1:11434"),
+            "model": os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b"),  # Modelo conversacional
+            "api_key": None,
+            "timeout": int(os.getenv("OLLAMA_TIMEOUT", 180)),
             "cost_per_1k": 0,
         },
         ProviderType.OPENAI: {
@@ -132,8 +141,8 @@ class LLMConfig:
         if not config:
             return False
 
-        # Ollama siempre disponible en local
-        if provider == ProviderType.OLLAMA:
+        # Ollama y Ollama Chat siempre disponibles en local
+        if provider in [ProviderType.OLLAMA, ProviderType.OLLAMA_CHAT]:
             return True
 
         return bool(config.get("api_key"))
