@@ -1,7 +1,28 @@
-# Agente-IA2
+# \# Agente-IA2
 
-Sistema autonomo con IA.
+# 
 
-## Uso
+# Sistema autónomo de desarrollo con IA multi-LLM (Ollama, OpenAI, Anthropic).
 
-python run.py
+# 
+
+# \## Características
+
+# 
+
+# \- Reparación automática de código
+
+# \- Generación desde texto natural
+
+# \- Análisis y refactorización
+
+# \- Tests funcionales completos (4/4 passing)
+
+# 
+
+# \## Instalación
+
+# 
+
+# 
+
