@@ -323,6 +323,20 @@ def download_models():
                 'message': f'❌ Error: {str(e)}'
             })
     
+    # Refrescar modelos en Kalin automáticamente
+    try:
+        from agent.llm.provider_manager import get_manager
+        manager = get_manager()
+        
+        # Refrescar modelos Ollama
+        if 'ollama' in manager.providers:
+            ollama_provider = manager.providers['ollama']
+            if hasattr(ollama_provider, 'refresh_models'):
+                new_models = ollama_provider.refresh_models()
+                print(f"✅ Kalin detectó {len(new_models)} modelos disponibles")
+    except Exception as e:
+        print(f"⚠️ No se pudieron refrescar modelos en Kalin: {e}")
+    
     return jsonify({
         'status': 'success',
         'results': results
@@ -390,6 +404,28 @@ def available_models():
         }
     ]
     
+    # Verificar qué modelos están instalados
+    try:
+        from agent.llm.provider_manager import get_manager
+        manager = get_manager()
+        
+        installed_models = []
+        if 'ollama' in manager.providers:
+            ollama_provider = manager.providers['ollama']
+            if hasattr(ollama_provider, 'get_available_models'):
+                installed_models = ollama_provider.get_available_models()
+        
+        # Marcar modelos instalados
+        for model in recommended:
+            model['installed'] = any(
+                model['name'] in installed or installed in model['name']
+                for installed in installed_models
+            )
+    except Exception as e:
+        print(f"⚠️ No se pudo verificar modelos instalados: {e}")
+        for model in recommended:
+            model['installed'] = False
+    
     return jsonify({
         'status': 'success',
         'models': recommended
@@ -439,6 +475,369 @@ def create_venv():
             'status': 'error',
             'message': '⏱️ Timeout creando entorno virtual'
         }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error: {str(e)}'
+        }), 500
+
+@app.route("/system/set-model", methods=['POST'])
+def set_model():
+    """Cambia el modelo activo de Ollama y guarda en .env"""
+    data = request.get_json()
+    model_name = data.get('model', '')
+    
+    if not model_name:
+        return jsonify({
+            'status': 'error',
+            'message': '❌ No se especificó un modelo'
+        }), 400
+    
+    try:
+        from agent.llm.provider_manager import get_manager
+        from agent.llm.config import LLMConfig
+        
+        manager = get_manager()
+        
+        # Verificar que el modelo está disponible
+        if 'ollama' in manager.providers:
+            ollama_provider = manager.providers['ollama']
+            if hasattr(ollama_provider, 'is_model_available'):
+                if not ollama_provider.is_model_available(model_name):
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'❌ Modelo "{model_name}" no está instalado en Ollama'
+                    }), 404
+        
+        # Actualizar variable de entorno
+        os.environ['OLLAMA_MODEL'] = model_name
+        
+        # Guardar en archivo .env para persistencia
+        env_path = os.path.join(os.getcwd(), '.env')
+        if os.path.exists(env_path):
+            # Leer contenido actual
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            # Buscar y actualizar línea OLLAMA_MODEL
+            updated = False
+            new_lines = []
+            for line in lines:
+                if line.startswith('OLLAMA_MODEL='):
+                    new_lines.append(f'OLLAMA_MODEL={model_name}\n')
+                    updated = True
+                else:
+                    new_lines.append(line)
+            
+            # Si no existía, agregarla
+            if not updated:
+                new_lines.append(f'\nOLLAMA_MODEL={model_name}\n')
+            
+            # Escribir archivo actualizado
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.writelines(new_lines)
+        
+        # Recargar configuración del manager
+        manager.config = LLMConfig()
+        
+        # Actualizar modelo en el proveedor Ollama
+        if 'ollama' in manager.providers:
+            manager.providers['ollama'].model = model_name
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'✅ Modelo cambiado a: {model_name}\n\n💾 Configuración guardada permanentemente.\nKalin usará este modelo incluso después de reiniciar.',
+            'model': model_name
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al cambiar modelo: {str(e)}'
+        }), 500
+
+@app.route("/system/current-model")
+def current_model():
+    """Obtiene el modelo actualmente activo y lista de instalados con detalles"""
+    try:
+        from agent.llm.provider_manager import get_manager
+        import os
+        import subprocess
+        
+        manager = get_manager()
+        
+        current = os.getenv('OLLAMA_MODEL', 'deepseek-coder:6.7b')
+        
+        # Obtener lista de modelos instalados con detalles
+        installed_models = []
+        model_details = []
+        
+        if 'ollama' in manager.providers:
+            ollama_provider = manager.providers['ollama']
+            if hasattr(ollama_provider, 'get_available_models'):
+                installed_models = ollama_provider.get_available_models()
+        
+        # Obtener detalles de cada modelo (tamaño, versión)
+        try:
+            result = subprocess.run(
+                ['ollama', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')[1:]  # Saltar header
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            model_name = parts[0]
+                            model_size = parts[1] if len(parts) > 1 else 'Unknown'
+                            model_details.append({
+                                'name': model_name,
+                                'size': model_size,
+                                'installed': True
+                            })
+        except Exception as e:
+            print(f"⚠️ Error obteniendo detalles de modelos: {e}")
+        
+        return jsonify({
+            'status': 'success',
+            'current_model': current,
+            'installed_models': installed_models,
+            'model_details': model_details if model_details else [{'name': m, 'size': 'Unknown', 'installed': True} for m in installed_models]
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@app.route("/system/create-env", methods=['POST'])
+def create_env_file():
+    """Crea o actualiza el archivo .env con configuración completa"""
+    import os
+    
+    try:
+        env_path = os.path.join(os.getcwd(), '.env')
+        
+        # Verificar si ya existe
+        if os.path.exists(env_path):
+            # Preguntar si desea sobrescribir
+            data = request.get_json() if request.is_json else {}
+            overwrite = data.get('overwrite', False)
+            
+            if not overwrite:
+                return jsonify({
+                    'status': 'warning',
+                    'message': '⚠️ El archivo .env ya existe. ¿Deseas sobrescribirlo?',
+                    'requires_confirmation': True
+                })
+        
+        # Obtener configuración actual
+        current_model = os.getenv('OLLAMA_MODEL', 'deepseek-coder:6.7b')
+        
+        # Si no hay modelo configurado, detectar el mejor disponible
+        if not os.getenv('OLLAMA_MODEL'):
+            best_model = detect_best_model()
+            if best_model:
+                current_model = best_model
+                os.environ['OLLAMA_MODEL'] = best_model
+        
+        # Crear contenido del .env
+        env_content = f"""# ============================================================================
+# CONFIGURACIÓN DE KALIN AI
+# Generado automáticamente el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# MODO DE OPERACIÓN
+# ----------------------------------------------------------------------------
+# local = Desarrollo (usa Ollama local, gratis)
+# cloud = Producción (usa OpenAI/Anthropic, requiere API keys)
+KALIN_MODE=local
+
+# ----------------------------------------------------------------------------
+# OLLAMA (LOCAL - DESARROLLO)
+# ----------------------------------------------------------------------------
+# Instalación: https://ollama.ai
+# Modelo recomendado: deepseek-coder (gratuito, funciona offline)
+OLLAMA_ENDPOINT=http://127.0.0.1:11434
+OLLAMA_MODEL={current_model}
+
+# ----------------------------------------------------------------------------
+# OPENAI (CLOUD - PRODUCCIÓN) - OPCIONAL
+# ----------------------------------------------------------------------------
+# Obtén tu API key en: https://platform.openai.com/api-keys
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4-turbo
+
+# ----------------------------------------------------------------------------
+# ANTHROPIC / CLAUDE (CLOUD - FALLBACK) - OPCIONAL
+# ----------------------------------------------------------------------------
+# Obtén tu API key en: https://console.anthropic.com/
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# ----------------------------------------------------------------------------
+# CONFIGURACIÓN DEL SERVIDOR FLASK
+# ----------------------------------------------------------------------------
+FLASK_HOST=127.0.0.1
+FLASK_PORT=5000
+FLASK_DEBUG=0  # 0 = production, 1 = development
+
+# ----------------------------------------------------------------------------
+# NOTAS IMPORTANTES
+# ----------------------------------------------------------------------------
+# 1. NUNCA subas este archivo a GitHub (está en .gitignore)
+# 2. Las API keys deben mantenerse vacías si no las usas
+# 3. Para cambiar el modelo, usa el menú lateral o edita OLLAMA_MODEL
+# 4. Reinicia Kalin después de editar manualmente este archivo
+"""
+        
+        # Guardar archivo
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.write(env_content)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'✅ Archivo .env creado exitosamente\n\n📄 Ubicación: {env_path}\n\n💾 Configuración guardada:\n• Modelo: {current_model}\n• Endpoint Ollama: http://127.0.0.1:11434\n• Puerto Flask: 5000\n\n🔄 Reinicia Kalin para aplicar cambios.',
+            'path': env_path,
+            'model_selected': current_model
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al crear .env: {str(e)}'
+        }), 500
+
+def detect_best_model():
+    """Detecta el mejor modelo disponible basado en prioridad y versión"""
+    import subprocess
+    
+    try:
+        # Lista de modelos en orden de preferencia (más reciente/mejor primero)
+        preferred_models = [
+            'deepseek-coder:latest',
+            'deepseek-coder:6.7b',
+            'qwen2.5-coder:latest',
+            'qwen2.5-coder:7b',
+            'codellama:latest',
+            'codellama:7b',
+            'llama3.2:latest',
+            'llama3.2:3b',
+            'llama3.1:latest',
+            'llama3.1:8b',
+            'mistral:latest',
+            'mistral:7b',
+            'gemma2:latest',
+            'gemma2:9b',
+            'phi3:latest',
+            'phi3:mini',
+        ]
+        
+        # Obtener modelos instalados
+        result = subprocess.run(
+            ['ollama', 'list'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0:
+            return None
+        
+        installed = []
+        lines = result.stdout.strip().split('\n')[1:]  # Saltar header
+        for line in lines:
+            if line.strip():
+                parts = line.split()
+                if parts:
+                    installed.append(parts[0])
+        
+        # Buscar el primer modelo preferido que esté instalado
+        for preferred in preferred_models:
+            # Verificar coincidencia exacta o parcial
+            for inst in installed:
+                if preferred.split(':')[0] in inst or inst in preferred:
+                    print(f"✅ Mejor modelo detectado: {inst}")
+                    return inst
+        
+        # Si no hay modelos preferidos, devolver el primero instalado
+        if installed:
+            print(f"✅ Usando primer modelo disponible: {installed[0]}")
+            return installed[0]
+        
+        return None
+        
+    except Exception as e:
+        print(f"⚠️ Error detectando mejor modelo: {e}")
+        return None
+
+@app.route("/system/create-shortcut", methods=['POST'])
+def create_desktop_shortcut():
+    """Crea un acceso directo en el escritorio para iniciar Kalin"""
+    import os
+    import sys
+    
+    try:
+        # Obtener ruta del escritorio
+        desktop = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+        
+        # Ruta del script batch
+        bat_path = os.path.join(os.getcwd(), 'Iniciar_Kalin.bat')
+        
+        # Verificar que el archivo .bat existe
+        if not os.path.exists(bat_path):
+            return jsonify({
+                'status': 'error',
+                'message': '❌ No se encontró el archivo Iniciar_Kalin.bat'
+            }), 404
+        
+        # Crear acceso directo usando VBScript
+        vbscript = f'''
+Set oWS = WScript.CreateObject("WScript.Shell")
+sLinkFile = "{desktop}\\Kalin.lnk"
+Set oLink = oWS.CreateShortcut(sLinkFile)
+oLink.TargetPath = "{bat_path}"
+oLink.WorkingDirectory = "{os.getcwd()}"
+oLink.Description = "Kalin AI - Asistente de Programación"
+oLink.IconLocation = "%SystemRoot%\\System32\\SHELL32.dll, 13"
+oLink.Save
+'''
+        
+        # Guardar script temporal
+        vbs_path = os.path.join(os.getcwd(), 'create_shortcut.vbs')
+        with open(vbs_path, 'w', encoding='utf-8') as f:
+            f.write(vbscript)
+        
+        # Ejecutar VBScript
+        import subprocess
+        result = subprocess.run(
+            ['cscript', '//nologo', vbs_path],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Eliminar script temporal
+        if os.path.exists(vbs_path):
+            os.remove(vbs_path)
+        
+        if result.returncode == 0:
+            return jsonify({
+                'status': 'success',
+                'message': f'✅ Acceso directo creado en el Escritorio\n\n📍 Ubicación: {desktop}\\Kalin.lnk\n\n💡 Ahora puedes iniciar Kalin con doble click en el icono del escritorio.',
+                'path': os.path.join(desktop, 'Kalin.lnk')
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': f'❌ Error al crear acceso directo: {result.stderr}'
+            }), 500
+    
     except Exception as e:
         return jsonify({
             'status': 'error',

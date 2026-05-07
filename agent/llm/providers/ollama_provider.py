@@ -35,6 +35,41 @@ def call_ollama(prompt: str):
 class OllamaProvider(BaseLLMProvider):
     """Proveedor Ollama - LLM local"""
 
+    def __init__(self, config=None):
+        super().__init__(config)
+        self._available_models = []
+        self._last_refresh = 0
+
+    def refresh_models(self):
+        """Refresca la lista de modelos disponibles en Ollama"""
+        import time
+        try:
+            response = requests.get(f"{self.endpoint}/api/tags", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                models = [model['name'] for model in data.get('models', [])]
+                self._available_models = models
+                self._last_refresh = time.time()
+                print(f"✅ Modelos Ollama actualizados: {len(models)} modelos encontrados")
+                return models
+        except Exception as e:
+            print(f"⚠️ Error refrescando modelos: {e}")
+        return self._available_models
+
+    def get_available_models(self):
+        """Obtiene lista de modelos disponibles (con cache de 30 segundos)"""
+        import time
+        # Refrescar si pasaron más de 30 segundos o si está vacío
+        if not self._available_models or (time.time() - self._last_refresh) > 30:
+            return self.refresh_models()
+        return self._available_models
+
+    def is_model_available(self, model_name: str) -> bool:
+        """Verifica si un modelo específico está disponible"""
+        models = self.get_available_models()
+        # Verificar coincidencia exacta o parcial
+        return any(model_name in m or m in model_name for m in models)
+
     def is_available(self) -> bool:
         """Verifica que Ollama esté corriendo"""
         try:

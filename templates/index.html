@@ -195,22 +195,25 @@
         position: fixed;
         top: 12px;
         left: 12px;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 8px;
-        border: 1px solid #e5e5e5;
+        border: 2px solid #0066ff;
         background: #ffffff;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
-        z-index: 100;
+        font-size: 22px;
+        z-index: 1000;
         transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 102, 255, 0.3);
       }
 
       .menu-toggle:hover {
-        background: #f3f3f3;
+        background: #0066ff;
+        color: white;
+        transform: scale(1.05);
       }
 
       /* Menú lateral */
@@ -222,7 +225,7 @@
         height: 100vh;
         background: #ffffff;
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
-        z-index: 99;
+        z-index: 999;
         transition: left 0.3s ease;
         overflow-y: auto;
         padding: 20px;
@@ -445,6 +448,25 @@
         font-style: italic;
       }
 
+      .model-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 8px;
+      }
+
+      .model-status.installed {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .model-status.not-installed {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
       .modal-footer {
         padding: 16px 20px;
         border-top: 1px solid #e5e5e5;
@@ -534,7 +556,25 @@
       </div>
 
       <div class="sidebar-section">
-        <div class="sidebar-section-title">Instalación</div>
+        <div class="sidebar-section-title">Instalación Rápida</div>
+        
+        <button class="sidebar-btn" onclick="quickInstall()" style="background: #0066ff; color: white; border-color: #0066ff; font-weight: 600;">
+          <span class="sidebar-btn-icon">🚀</span>
+          <span>Instalar Kalin (Automático)</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Ejecuta todos los pasos de instalación automáticamente en el orden correcto.
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Instalación Manual</div>
+        
+        <button class="sidebar-btn" onclick="createEnvFile()">
+          <span class="sidebar-btn-icon">⚙️</span>
+          <span>Crear Archivo de Configuración</span>
+        </button>
         
         <button class="sidebar-btn" onclick="checkDependencies()">
           <span class="sidebar-btn-icon">🔍</span>
@@ -554,6 +594,11 @@
         <button class="sidebar-btn" onclick="downloadModels()">
           <span class="sidebar-btn-icon">📥</span>
           <span>Descargar Modelos IA</span>
+        </button>
+        
+        <button class="sidebar-btn" onclick="selectActiveModel()">
+          <span class="sidebar-btn-icon">🤖</span>
+          <span>Seleccionar Modelo Activo</span>
         </button>
         
         <div class="sidebar-info">
@@ -577,6 +622,22 @@
           <button class="modal-btn modal-btn-primary" id="download-selected-btn" onclick="confirmDownloadModels()" disabled>
             Descargar Seleccionados
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de selección de modelo activo -->
+    <div class="modal-overlay" id="active-model-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">🤖 Seleccionar Modelo Activo</span>
+          <button class="modal-close" onclick="closeActiveModelModal()">×</button>
+        </div>
+        <div class="modal-body" id="active-model-list">
+          <!-- Los modelos instalados se cargarán aquí -->
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn" onclick="closeActiveModelModal()">Cancelar</button>
         </div>
       </div>
     </div>
@@ -757,10 +818,28 @@
 
       // Funciones del menú lateral
       function toggleSidebar() {
+        console.log('=== TOGGLE SIDEBAR CALLED ===');
         var sidebar = document.getElementById("sidebar");
         var overlay = document.getElementById("overlay");
+        console.log('Sidebar element:', sidebar);
+        console.log('Overlay element:', overlay);
+        
+        if (!sidebar || !overlay) {
+          console.error('❌ Sidebar or Overlay not found!');
+          alert('Error: No se encontró el menú lateral. Por favor, recarga la página (Ctrl+F5).');
+          return;
+        }
+        
+        console.log('Before toggle - Sidebar classes:', sidebar.classList.toString());
+        console.log('Before toggle - Overlay classes:', overlay.classList.toString());
+        
         sidebar.classList.toggle("open");
         overlay.classList.toggle("show");
+        
+        console.log('After toggle - Sidebar classes:', sidebar.classList.toString());
+        console.log('After toggle - Overlay classes:', overlay.classList.toString());
+        console.log('After toggle - Sidebar left position:', window.getComputedStyle(sidebar).left);
+        console.log('=== END TOGGLE ===');
       }
 
       function exportExperience() {
@@ -958,6 +1037,444 @@
         openModelModal();
       }
 
+      function selectActiveModel() {
+        // Cerrar el menú lateral
+        toggleSidebar();
+        
+        // Abrir modal de selección de modelo activo
+        openActiveModelModal();
+      }
+
+      function createEnvFile() {
+        // Cerrar el menú lateral
+        toggleSidebar();
+        
+        // Confirmación
+        if (!confirm('¿Crear/actualizar el archivo .env con la configuración completa?\n\nEsto generará un archivo con:\n• Configuración de Ollama\n• Modelo actual seleccionado\n• Configuración del servidor Flask\n• Placeholders para API keys (opcional)')) {
+          return;
+        }
+        
+        addMessage('⚙️ Creando archivo de configuración .env...', 'user');
+        
+        fetch('/system/create-env', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ overwrite: true })
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              addMessage(data.message, 'bot');
+            } else if (data.status === 'warning' && data.requires_confirmation) {
+              // Preguntar si desea sobrescribir
+              if (confirm(data.message + '\n\n¿Deseas sobrescribir el archivo existente?')) {
+                // Llamar nuevamente con confirmación
+                fetch('/system/create-env', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ overwrite: true })
+                })
+                  .then(function(resp) {
+                    return resp.json();
+                  })
+                  .then(function(result) {
+                    if (result.status === 'success') {
+                      addMessage(result.message, 'bot');
+                    } else {
+                      addMessage(result.message, 'bot');
+                    }
+                  });
+              } else {
+                addMessage('❌ Operación cancelada', 'bot');
+              }
+            } else {
+              addMessage(data.message, 'bot');
+            }
+          })
+          .catch(function(error) {
+            addMessage('❌ Error: ' + error.message, 'bot');
+          });
+      }
+
+      function quickInstall() {
+        // Cerrar el menú lateral
+        toggleSidebar();
+        
+        // Confirmación inicial
+        if (!confirm('🚀 Asistente de Instalación Automática\n\nEsto ejecutará los siguientes pasos en orden:\n\n1️⃣  Crear archivo .env (configuración automática)\n2️⃣  Verificar dependencias del sistema\n3️⃣  Crear entorno virtual\n4️⃣  Instalar packages Python\n5️⃣  Descargar modelos IA recomendados (si no están instalados)\n\n💡 El sistema detectará automáticamente el mejor modelo disponible.\n\n¿Deseas continuar?')) {
+          return;
+        }
+        
+        addMessage('🚀 **Iniciando instalación automática de Kalin...**\n\nPor favor espera, esto puede tardar varios minutos.', 'user');
+        
+        // Paso 1: Crear .env (con detección automática de modelo)
+        addMessage('⚙️ **Paso 1/5:** Creando archivo de configuración y detectando mejor modelo...', 'bot');
+        
+        setTimeout(function() {
+          fetch('/system/create-env', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ overwrite: true })
+          })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var modelMsg = data.model_selected ? '\n🤖 Modelo seleccionado automáticamente: **' + data.model_selected + '**' : '';
+              addMessage('✅ Paso 1 completado: Archivo .env creado' + modelMsg, 'bot');
+              
+              // Paso 2: Verificar dependencias
+              setTimeout(function() {
+                addMessage('🔍 **Paso 2/5:** Verificando dependencias...', 'bot');
+                
+                fetch('/system/check-dependencies')
+                  .then(function(response) { return response.json(); })
+                  .then(function(result) {
+                    if (result.status === 'success') {
+                      var missing = [];
+                      if (!result.results.python) missing.push('Python');
+                      if (!result.results.pip) missing.push('pip');
+                      if (!result.results.flask) missing.push('Flask');
+                      if (!result.results.ollama) missing.push('Ollama');
+                      
+                      if (missing.length > 0) {
+                        addMessage('⚠️ Faltan dependencias: ' + missing.join(', '), 'bot');
+                        addMessage('💡 Instala las dependencias faltantes antes de continuar', 'bot');
+                      } else {
+                        addMessage('✅ Paso 2 completado: Todas las dependencias están instaladas', 'bot');
+                      }
+                      
+                      // Paso 3: Crear entorno virtual
+                      setTimeout(function() {
+                        addMessage('📦 **Paso 3/5:** Creando entorno virtual...', 'bot');
+                        
+                        fetch('/system/create-venv', { method: 'POST' })
+                          .then(function(response) { return response.json(); })
+                          .then(function(venvData) {
+                            if (venvData.status === 'success' || venvData.status === 'warning') {
+                              addMessage('✅ Paso 3 completado: Entorno virtual listo', 'bot');
+                              
+                              // Paso 4: Instalar dependencias
+                              setTimeout(function() {
+                                addMessage('⚙️ **Paso 4/5:** Instalando packages Python... (esto puede tardar)', 'bot');
+                                
+                                fetch('/system/install-dependencies', { method: 'POST' })
+                                  .then(function(response) { return response.json(); })
+                                  .then(function(installData) {
+                                    if (installData.status === 'success') {
+                                      addMessage('✅ Paso 4 completado: Packages instalados', 'bot');
+                                      
+                                      // Paso 5: Verificar y descargar modelos si es necesario
+                                      setTimeout(function() {
+                                        addMessage('📥 **Paso 5/5:** Verificando modelos IA instalados...', 'bot');
+                                        
+                                        // Primero verificar qué modelos ya están instalados
+                                        fetch('/system/current-model')
+                                          .then(function(response) { return response.json(); })
+                                          .then(function(modelInfo) {
+                                            var installedModels = modelInfo.installed_models || [];
+                                            var needsDownload = [];
+                                            var recommendedModels = ['deepseek-coder:6.7b', 'llama3.2:3b'];
+                                            
+                                            // Verificar cuáles modelos recomendados faltan
+                                            recommendedModels.forEach(function(recModel) {
+                                              var isInstalled = installedModels.some(function(inst) {
+                                                return inst.includes(recModel.split(':')[0]);
+                                              });
+                                              if (!isInstalled) {
+                                                needsDownload.push(recModel);
+                                              }
+                                            });
+                                            
+                                            if (needsDownload.length === 0) {
+                                              addMessage('✅ Paso 5 completado: Ya tienes modelos IA instalados', 'bot');
+                                              
+                                              // Crear acceso directo en el escritorio
+                                              setTimeout(function() {
+                                                addMessage('🔗 **Creando acceso directo en el Escritorio...**', 'bot');
+                                                
+                                                fetch('/system/create-shortcut', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' }
+                                                })
+                                                  .then(function(response) { return response.json(); })
+                                                  .then(function(shortcutData) {
+                                                    // Resumen final - instalación completa sin descargas
+                                                    var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
+                                                    summary += '✅ Todos los pasos se completaron exitosamente\n\n';
+                                                    summary += '**Configuración detectada:**\n';
+                                                    summary += '• Modelos disponibles: ' + installedModels.join(', ') + '\n';
+                                                    summary += '• Modelo seleccionado: ' + (modelInfo.current_model || 'auto-detectado') + '\n\n';
+                                                    
+                                                    if (shortcutData.status === 'success') {
+                                                      summary += '**Acceso directo:**\n';
+                                                      summary += shortcutData.message + '\n\n';
+                                                    }
+                                                    
+                                                    summary += '**Próximos pasos:**\n';
+                                                    summary += '1. Reinicia Kalin para aplicar cambios\n';
+                                                    summary += '2. Abre http://localhost:5000\n';
+                                                    summary += '3. ¡Comienza a usar Kalin!\n\n';
+                                                    summary += '💡 **Consejo:** Puedes cambiar el modelo desde el menú lateral.';
+                                                    
+                                                    addMessage(summary, 'bot');
+                                                  })
+                                                  .catch(function(error) {
+                                                    // Si falla el acceso directo, mostrar resumen normal
+                                                    var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
+                                                    summary += '✅ Todos los pasos se completaron exitosamente\n\n';
+                                                    summary += '**Configuración detectada:**\n';
+                                                    summary += '• Modelos disponibles: ' + installedModels.join(', ') + '\n';
+                                                    summary += '• Modelo seleccionado: ' + (modelInfo.current_model || 'auto-detectado') + '\n\n';
+                                                    summary += '**Próximos pasos:**\n';
+                                                    summary += '1. Reinicia Kalin para aplicar cambios\n';
+                                                    summary += '2. Abre http://localhost:5000\n';
+                                                    summary += '3. ¡Comienza a usar Kalin!\n\n';
+                                                    summary += '💡 **Consejo:** Puedes cambiar el modelo desde el menú lateral.';
+                                                    
+                                                    addMessage(summary, 'bot');
+                                                  });
+                                              }, 1000);
+                                            } else {
+                                              // Descargar solo los modelos que faltan
+                                              addMessage('📥 Descargando modelos faltantes: ' + needsDownload.join(', ') + '... (esto puede tardar 10-30 min)', 'bot');
+                                              
+                                              fetch('/system/download-models', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ models: needsDownload })
+                                              })
+                                                .then(function(response) { return response.json(); })
+                                                .then(function(modelData) {
+                                                  if (modelData.status === 'success') {
+                                                    addMessage('✅ Paso 5 completado: Modelos descargados', 'bot');
+                                                    
+                                                    // Crear acceso directo en el escritorio
+                                                    setTimeout(function() {
+                                                      addMessage('🔗 **Creando acceso directo en el Escritorio...**', 'bot');
+                                                      
+                                                      fetch('/system/create-shortcut', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' }
+                                                      })
+                                                        .then(function(response) { return response.json(); })
+                                                        .then(function(shortcutData) {
+                                                          // Resumen final con descarga
+                                                          var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
+                                                          summary += '✅ Todos los pasos se completaron exitosamente\n\n';
+                                                          summary += '**Modelos instalados:**\n';
+                                                          modelData.results.forEach(function(r) {
+                                                            summary += '• ' + r.message + '\n';
+                                                          });
+                                                          summary += '\n';
+                                                          
+                                                          if (shortcutData.status === 'success') {
+                                                            summary += '**Acceso directo:**\n';
+                                                            summary += shortcutData.message + '\n\n';
+                                                          }
+                                                          
+                                                          summary += '**Próximos pasos:**\n';
+                                                          summary += '1. Reinicia Kalin para aplicar cambios\n';
+                                                          summary += '2. Abre http://localhost:5000\n';
+                                                          summary += '3. ¡Comienza a usar Kalin!\n\n';
+                                                          summary += '💡 **Consejo:** Puedes seleccionar otro modelo desde el menú lateral.';
+                                                          
+                                                          addMessage(summary, 'bot');
+                                                        })
+                                                        .catch(function(error) {
+                                                          // Si falla el acceso directo, mostrar resumen normal
+                                                          var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
+                                                          summary += '✅ Todos los pasos se completaron exitosamente\n\n';
+                                                          summary += '**Modelos instalados:**\n';
+                                                          modelData.results.forEach(function(r) {
+                                                            summary += '• ' + r.message + '\n';
+                                                          });
+                                                          summary += '\n**Próximos pasos:**\n';
+                                                          summary += '1. Reinicia Kalin para aplicar cambios\n';
+                                                          summary += '2. Abre http://localhost:5000\n';
+                                                          summary += '3. ¡Comienza a usar Kalin!\n\n';
+                                                          summary += '💡 **Consejo:** Puedes seleccionar otro modelo desde el menú lateral.';
+                                                          
+                                                          addMessage(summary, 'bot');
+                                                        });
+                                                    }, 1000);
+                                                  } else {
+                                                    addMessage('⚠️ Algunos modelos no se pudieron descargar, pero puedes hacerlo manualmente después', 'bot');
+                                                  }
+                                                })
+                                                .catch(function(error) {
+                                                  addMessage('⚠️ Error descargando modelos. Puedes hacerlo manualmente después.', 'bot');
+                                                });
+                                            }
+                                          })
+                                          .catch(function(error) {
+                                            addMessage('⚠️ Error verificando modelos. Puedes descargarlos manualmente después.', 'bot');
+                                          });
+                                      }, 1000);
+                                    } else {
+                                      addMessage('❌ Error instalando packages. Intenta manualmente: pip install -r requirements.txt', 'bot');
+                                    }
+                                  })
+                                  .catch(function(error) {
+                                    addMessage('❌ Error en instalación de packages', 'bot');
+                                  });
+                              }, 1000);
+                            } else {
+                              addMessage('⚠️ Entorno virtual ya existe o hubo un error', 'bot');
+                            }
+                          })
+                          .catch(function(error) {
+                            addMessage('❌ Error creando entorno virtual', 'bot');
+                          });
+                      }, 1000);
+                    }
+                  })
+                  .catch(function(error) {
+                    addMessage('❌ Error verificando dependencias', 'bot');
+                  });
+              }, 1000);
+            } else {
+              addMessage('❌ Error creando .env', 'bot');
+            }
+          })
+          .catch(function(error) {
+            addMessage('❌ Error: ' + error.message, 'bot');
+          });
+        }, 500);
+      }
+
+      function openActiveModelModal() {
+        var modal = document.getElementById('active-model-modal');
+        modal.classList.add('show');
+        
+        // Cargar lista de modelos instalados
+        fetch('/system/current-model')
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              renderActiveModelList(data.current_model, data.installed_models);
+            }
+          })
+          .catch(function(error) {
+            console.error('Error cargando modelos:', error);
+            addMessage('❌ Error al cargar modelos disponibles', 'bot');
+          });
+      }
+
+      function closeActiveModelModal() {
+        var modal = document.getElementById('active-model-modal');
+        modal.classList.remove('show');
+      }
+
+      function renderActiveModelList(currentModel, installedModels) {
+        var container = document.getElementById('active-model-list');
+        container.innerHTML = '';
+        
+        if (!installedModels || installedModels.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding:20px; color:#6e6e80;">No hay modelos instalados. Descarga modelos primero.</div>';
+          return;
+        }
+        
+        // Mostrar modelo actual
+        var currentDiv = document.createElement('div');
+        currentDiv.style.padding = '12px';
+        currentDiv.style.background = '#f0f7ff';
+        currentDiv.style.borderRadius = '8px';
+        currentDiv.style.marginBottom = '16px';
+        currentDiv.innerHTML = '<strong>Modelo actual:</strong> ' + currentModel;
+        container.appendChild(currentDiv);
+        
+        // Título
+        var title = document.createElement('div');
+        title.className = 'model-category-title';
+        title.textContent = 'Modelos Instalados';
+        container.appendChild(title);
+        
+        // Lista de modelos
+        installedModels.forEach(function(modelName) {
+          var item = document.createElement('div');
+          item.className = 'model-item';
+          
+          // Resaltar modelo actual
+          if (modelName === currentModel) {
+            item.style.background = '#d4edda';
+            item.style.borderColor = '#28a745';
+          }
+          
+          item.onclick = function() { changeActiveModel(modelName); };
+          
+          var nameContainer = document.createElement('div');
+          nameContainer.style.display = 'flex';
+          nameContainer.style.alignItems = 'center';
+          nameContainer.style.justifyContent = 'space-between';
+          
+          var name = document.createElement('div');
+          name.className = 'model-name';
+          name.textContent = modelName;
+          
+          // Indicador de modelo activo
+          if (modelName === currentModel) {
+            var badge = document.createElement('span');
+            badge.className = 'model-status installed';
+            badge.textContent = '✓ Activo';
+            nameContainer.appendChild(name);
+            nameContainer.appendChild(badge);
+          } else {
+            var selectBtn = document.createElement('span');
+            selectBtn.style.padding = '4px 12px';
+            selectBtn.style.background = '#0066ff';
+            selectBtn.style.color = 'white';
+            selectBtn.style.borderRadius = '4px';
+            selectBtn.style.fontSize = '12px';
+            selectBtn.style.cursor = 'pointer';
+            selectBtn.textContent = 'Seleccionar';
+            nameContainer.appendChild(name);
+            nameContainer.appendChild(selectBtn);
+          }
+          
+          item.appendChild(nameContainer);
+          container.appendChild(item);
+        });
+      }
+
+      function changeActiveModel(modelName) {
+        if (!confirm('¿Cambiar el modelo activo a "' + modelName + '"?\n\nEste cambio se guardará permanentemente y persistirá después de reiniciar Kalin.')) {
+          return;
+        }
+        
+        closeActiveModelModal();
+        
+        addMessage('🤖 Cambiando modelo a ' + modelName + '...', 'user');
+        
+        fetch('/system/set-model', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ model: modelName })
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              addMessage(data.message, 'bot');
+            } else {
+              addMessage(data.message, 'bot');
+            }
+          })
+          .catch(function(error) {
+            addMessage('❌ Error: ' + error.message, 'bot');
+          });
+      }
+
       var selectedModels = [];
 
       function openModelModal() {
@@ -1019,11 +1536,30 @@
             grouped[category].forEach(function(model) {
               var item = document.createElement('div');
               item.className = 'model-item';
+              
+              // Si ya está instalado, mostrar indicador visual
+              if (model.installed) {
+                item.style.background = '#f0fff4';
+                item.style.borderColor = '#48bb78';
+              }
+              
               item.onclick = function() { toggleModelSelection(model.name, item); };
+              
+              var nameContainer = document.createElement('div');
+              nameContainer.style.display = 'flex';
+              nameContainer.style.alignItems = 'center';
               
               var name = document.createElement('div');
               name.className = 'model-name';
               name.textContent = model.name;
+              
+              // Agregar badge de estado
+              var status = document.createElement('span');
+              status.className = 'model-status ' + (model.installed ? 'installed' : 'not-installed');
+              status.textContent = model.installed ? '✓ Instalado' : '⬇ Descargar';
+              
+              nameContainer.appendChild(name);
+              nameContainer.appendChild(status);
               
               var size = document.createElement('div');
               size.className = 'model-size';
@@ -1037,7 +1573,7 @@
               useCase.className = 'model-use-case';
               useCase.textContent = 'Uso: ' + model.use_case;
               
-              item.appendChild(name);
+              item.appendChild(nameContainer);
               item.appendChild(size);
               item.appendChild(desc);
               item.appendChild(useCase);
@@ -1103,7 +1639,10 @@
                 message += result.message + '\n';
               });
               
-              message += '\n💡 **Modelos listos para usar:**\n';
+              message += '\n✅ **Kalin ha detectado automáticamente los nuevos modelos!**\n';
+              message += 'No necesitas reiniciar. Los modelos están listos para usar.\n';
+              
+              message += '\n💡 **Modelos disponibles:**\n';
               selectedModels.forEach(function(model) {
                 message += '• ' + model + '\n';
               });
