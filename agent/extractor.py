@@ -59,7 +59,11 @@ def extraer_codigo(respuesta: str) -> str:
                 es_codigo = True
         
         # Líneas con paréntesis/llaves/corchetes (código)
-        elif any(c in linea_stripped for c in ['()', '{}', '[]', '()', '=>']):
+        elif any(c in linea_stripped for c in ['(', ')', '{', '}', '[', ']']):
+            es_codigo = True
+        
+        # PRESERVAR llaves de cierre solas (importantes para Java/C++/etc)
+        elif linea_stripped in ['}', '{', '};', '{ }']:
             es_codigo = True
         
         # Si parece código, agregarla

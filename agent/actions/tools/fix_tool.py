@@ -141,24 +141,31 @@ def limpiar_respuesta(respuesta: str) -> str:
                 continue  # Saltar esta línea
             
             # Si encontramos código real, dejar de omitir
-            # AÑADIDO: Soporte para HTML
+            # AÑADIDO: Soporte para HTML, Java, y otros lenguajes
             if any(linea.strip().startswith(kw) for kw in [
                 'import ', 'from ', 'def ', 'class ', 'public ', 
                 'private ', '//', '#', '/*', '@', 'package '
             ]) or any(html_tag in linea_lower for html_tag in [
                 '<!doctype', '<html', '<head', '<body', '<div', '<script', '<style'
+            ]) or any(java_kw in linea_lower for java_kw in [
+                'public class', 'private class', 'protected class',
+                'public static', 'private static', 'void main',
+                'system.out', 'new jframe', 'settitle', 'setsize',
+                'setdefaultcloseoperation', 'setlocationrelativeto',
+                'jlabel', 'jbutton', 'jpanel', 'actionlistener'
             ]):
                 omitir_lineas_iniciales = False
                 lineas_limpias.append(linea)
             else:
                 continue  # Seguir omitiendo
         else:
-            # Ya estamos en código, agregar todas las líneas
+            # Ya estamos en código, agregar TODAS las líneas sin filtrar
             lineas_limpias.append(linea)
     
     resultado = '\n'.join(lineas_limpias).strip()
     
     # LIMPIAR COMENTARIOS del código (capa de seguridad adicional)
+    # PER OJO: Para Java, eliminar comentarios // y /* */ pero NO código
     resultado = eliminar_comentarios(resultado)
     
     return resultado
@@ -172,14 +179,36 @@ def eliminar_comentarios(codigo: str) -> str:
     # Detectar si es HTML puro
     es_html = '<!doctype' in codigo.lower() or '<html' in codigo.lower()
     
+    # Detectar si es Java
+    es_java = 'public class' in codigo or 'import java.' in codigo or 'import javax.' in codigo
+    
     # PRIMERO: Eliminar comentarios HTML <!-- ... -->
-    codigo = re.sub(r'<!--.*?-->', '', codigo, flags=re.DOTALL)
+    # PER OJO: Solo eliminar comentarios PUROS, no código entre comentarios
+    codigo = re.sub(r'<!--[^>]*?-->', '', codigo, flags=re.DOTALL)
     
     # Si es HTML, NO eliminar más nada (preservar etiquetas)
     if es_html:
         # Solo limpiar espacios en blanco múltiples
         lineas = [linea.rstrip() for linea in codigo.split('\n') if linea.strip()]
         return '\n'.join(lineas).strip()
+    
+    # Para Java, NO eliminar comentarios automáticamente
+    # Solo limpiar espacios y líneas vacías excesivas
+    if es_java:
+        lineas = codigo.split('\n')
+        lineas_limpias = []
+        vacias_consecutivas = 0
+        
+        for linea in lineas:
+            if not linea.strip():
+                vacias_consecutivas += 1
+                if vacias_consecutivas <= 2:  # Máximo 2 líneas vacías consecutivas
+                    lineas_limpias.append(linea.rstrip())
+            else:
+                vacias_consecutivas = 0
+                lineas_limpias.append(linea.rstrip())
+        
+        return '\n'.join(lineas_limpias).strip()
     
     # Para otros lenguajes, eliminar comentarios de línea
     lineas = codigo.split('\n')

@@ -1000,26 +1000,39 @@
         var div = document.createElement("div");
         div.className = "message " + sender;
         
-        // Convertir markdown básico a HTML
-        var html = text
-          .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\n/g, '<br>');
-        
-        div.innerHTML = html;
-        container.appendChild(div);
-        
-        // Agregar números de línea a los bloques de código en el chat
-        addLineNumbers(div);
+        // Si es un mensaje del bot con código, NO mostrar el código en el chat
+        // Solo mostrar un mensaje indicando que está en el panel central
+        if (sender === 'bot' && text.includes('```')) {
+          // Extraer solo el texto sin código para el chat
+          var textWithoutCode = text.replace(/```(\w+)?\n([\s\S]*?)```/g, '[Código generado - Ver panel central]');
+          
+          var html = textWithoutCode
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+          
+          div.innerHTML = html;
+          container.appendChild(div);
+          
+          // Mostrar el código SOLO en el área central
+          displayCodeInMainArea(text);
+        } else {
+          // Mensaje normal sin código - mostrar normalmente
+          var html = text
+            .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+          
+          div.innerHTML = html;
+          container.appendChild(div);
+          
+          // Agregar números de línea a los bloques de código en el chat (si hay)
+          addLineNumbers(div);
+        }
         
         // Scroll al final del chat
         container.scrollTop = container.scrollHeight;
-        
-        // Si es un mensaje del bot con código, también mostrarlo en el área central
-        if (sender === 'bot' && text.includes('```')) {
-          displayCodeInMainArea(text);
-        }
       }
 
       function displayCodeInMainArea(text) {
