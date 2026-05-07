@@ -2,6 +2,7 @@ from agent.core.brain import construir_contexto, planificar
 from agent.actions.executor import Executor
 from agent.core.logger import get_logger
 from agent.core.conversation_manager import ConversationManager
+from agent.core.conversation_memory import ConversationMemory as ConvMem
 from agent.core.experience_memory import get_experience_memory
 from agent.core.security import security_manager
 from agent.core.prompt_security import prompt_detector, result_verifier, action_guardian
@@ -13,8 +14,9 @@ class Orchestrator:
     def __init__(self):
         self.executor = Executor()
         self.conversation_manager = None
+        self.conversation_memory = None  # Nuevo sistema de memoria conversacional
         self.experience_memory = get_experience_memory()
-        logger.info("Orchestrator initialized with ExperienceMemory")
+        logger.info("Orchestrator initialized with ExperienceMemory and ConversationMemory")
 
     def handle(self, mensaje, estado, utils):
         """
@@ -45,6 +47,14 @@ class Orchestrator:
         if not self.conversation_manager:
             self.conversation_manager = ConversationManager(session_id=session_id)
             logger.info(f"ConversationManager created: {self.conversation_manager.session_id}")
+        
+        # 1.5 Inicializar conversation memory (sistema mejorado)
+        if not self.conversation_memory:
+            self.conversation_memory = ConvMem(
+                session_id=session_id,
+                max_history=20
+            )
+            logger.info(f"ConversationMemory initialized: {self.conversation_memory.session_id}")
         
         # 2. Registrar mensaje del usuario
         self.conversation_manager.add_message('user', mensaje_sanitizado)

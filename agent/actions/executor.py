@@ -10,6 +10,7 @@ from agent.core.state_manager import StateManager
 from agent.core.retry_engine import RetryEngine
 from agent.core.project_analyzer import ProjectAnalyzer
 from agent.core.experience_memory import get_experience_memory
+from agent.core.conversation_memory import conversation_memory as conv_mem_instance
 from agent.actions.strategies import PythonStrategy, ProjectStrategy
 from agent.core.logger import get_logger
 from agent.core.security import security_manager
@@ -21,12 +22,27 @@ class Executor:
         self.state_manager = StateManager()
         self.retry_engine = RetryEngine()
         self.experience_memory = get_experience_memory()
+        self.conversation_memory = conv_mem_instance  # Usar instancia global
         self.project_analyzer = None
         self._strategies_cache = {}
 
     def ejecutar(self, contexto, utils):
         intencion = contexto["intencion"]
         args = contexto.get("args", {})
+        
+        # INFERIR CONTEXTO FALTANTE usando memoria conversacional
+        mensaje_usuario = contexto.get("mensaje", "")
+        improved_args = self.conversation_memory.infer_missing_context(
+            mensaje=mensaje_usuario,
+            detected_intention=intencion,
+            args=args
+        )
+        
+        # Usar argumentos mejorados si se infirió contexto
+        if improved_args != args:
+            logger.info(f"Context inferred: {improved_args}")
+            args = improved_args
+            contexto["args"] = args
         
         # Compatibilidad: si viene estado en contexto, actualiza state_manager
         if "estado" in contexto:
@@ -55,6 +71,14 @@ class Executor:
             # Reinitialize project analyzer
             self.project_analyzer = ProjectAnalyzer(ruta)
             self._strategies_cache = {}
+            
+            # ACTUALIZAR MEMORIA CONVERSACIONAL
+            self.conversation_memory.update_context(
+                intention="setpath",
+                args={"arg": ruta},
+                result=f"Project path set to {ruta}",
+                metadata={"project_path": ruta}
+            )
             
             return jsonify({"respuesta": f"✅ Proyecto configurado en: {ruta}\n\nAhora puedes decir:\n• 'revisa mi proyecto'\n• 'analiza los archivos'\n• 'hay errores en el código'"})
 
@@ -223,6 +247,18 @@ class Executor:
                 solution_summary=f"Applied fix to {os.path.basename(ruta)}"
             )
             
+            # ACTUALIZAR MEMORIA CONVERSACIONAL
+            self.conversation_memory.update_context(
+                intention="fix",
+                args={"arg": ruta},
+                result=nuevo_limpio[:500] if nuevo_limpio else None,
+                metadata={
+                    "duration": duration,
+                    "file_type": file_type,
+                    "valid": valido
+                }
+            )
+            
             logger.info(f"Fix completed for {ruta}: valid={valido}, diff_length={len(diff)}, experience_recorded=True")
             
             return jsonify({
@@ -234,7 +270,95 @@ class Executor:
 
         if intencion == "analyze":
             nombre = args.get("arg")
+            mensaje_original = contexto.get("mensaje", "")
             
+            # VERIFICAR SI HAY CÓDIGO PEGADO DIRECTAMENTE EN EL MENSAJE
+            import re
+            code_blocks = re.findall(r'```(?:\w+)?\s*\n(.*?)\n```', mensaje_original, re.DOTALL)
+            
+            if code_blocks:
+                # Hay código pegado, analizarlo directamente
+                codigo = code_blocks[0]  # Tomar primer bloque
+                
+                # Detectar lenguaje del bloque de código
+                lang_match = re.search(r'```(\w+)', mensaje_original)
+                language = lang_match.group(1) if lang_match else "unknown"
+                
+                # Verificar si el código está completo
+                def is_code_truncated(code):
+                    """Detecta si el código está truncado/incompleto"""
+                    lines = code.strip().split('\n')
+                    if not lines:
+                        return True
+                    
+                    last_line = lines[-1].strip()
+                    
+                    # Patrones de código incompleto
+                    incomplete_patterns = [
+                        r'if\s*\($',           # if ( sin cerrar
+                        r'for\s*\(',           # for ( sin cerrar
+                        r'while\s*\(',         # while ( sin cerrar
+                        r'def\s+\w+\([^)]*$',  # def func( sin cerrar
+                        r'class\s+\w+\([^)]*$', # class X( sin cerrar
+                        r'=>\s*$',             # => sin cuerpo (Dart/JS)
+                    ]
+                    
+                    for pattern in incomplete_patterns:
+                        if re.search(pattern, last_line):
+                            return True
+                    
+                    # Verificar balance de llaves/paréntesis
+                    open_braces = code.count('{') - code.count('}')
+                    open_parens = code.count('(') - code.count(')')
+                    
+                    if open_braces > 2 or open_parens > 2:  # Margen de tolerancia
+                        return True
+                    
+                    return False
+                
+                if is_code_truncated(codigo):
+                    # Obtener última línea completa
+                    lines = codigo.strip().split('\n')
+                    last_lines = '\n'.join(lines[-3:]) if len(lines) >= 3 else codigo
+                    
+                    return jsonify({
+                        "respuesta": f"⚠️ **El código proporcionado parece estar incompleto o truncado.**\n\n"
+                                   f"Por favor, proporciona el código COMPLETO para poder analizarlo correctamente.\n\n"
+                                   f"**El código se corta en:**\n```\n{last_lines}\n```\n\n"
+                                   f"💡 Consejo: Copia y pega todo el archivo, no solo una parte."
+                    })
+                
+                # Analizar código directamente
+                contexto_analisis = {
+                    "user_message": contexto.get("mensaje", "Analiza este código"),
+                    "project_type": language,
+                    "files": [f"code_snippet.{language}"],
+                    "conversation_history": True,
+                    "is_inline_code": True  # Flag para indicar que es código pegado
+                }
+                
+                start_time = time.time()
+                analisis = analizar_codigo(codigo, contexto=contexto_analisis)
+                duration = time.time() - start_time
+                logger.info(f"Inline code analysis completed ({language}, {len(codigo)} chars)")
+                
+                # Guardar en memoria conversacional
+                self.conversation_memory.update_context(
+                    intention="analyze",
+                    args={"source": "inline_code", "language": language},
+                    result=analisis,
+                    metadata={
+                        "duration": duration,
+                        "file_type": language,
+                        "code_length": len(codigo)
+                    }
+                )
+                
+                return jsonify({
+                    "respuesta": f"🔍 **Análisis del código proporcionado:**\n\n{analisis}"
+                })
+            
+            # Si no hay código pegado, continuar con búsqueda de archivo normal
             # Si no hay archivo específico, haz un scan general
             if not nombre or nombre in ["los archivos", "el código", "el proyecto", "todo"]:
                 if not ruta_proyecto:
@@ -258,8 +382,19 @@ class Executor:
                     "data": resumen
                 })
             
-            if not ruta_proyecto:
-                return jsonify({"respuesta": "⚠️ Primero usa /setpath"})
+            # VERIFICAR SI HAY RUTA DE PROYECTO EN LOS ARGUMENTOS (extraída del mensaje)
+            project_path_from_msg = args.get("project_path")
+            if project_path_from_msg:
+                # Usar la ruta mencionada en el mensaje
+                ruta_proyecto_actual = project_path_from_msg
+                logger.info(f"Using project path from message: {ruta_proyecto_actual}")
+            else:
+                # Usar ruta configurada
+                ruta_proyecto_actual = ruta_proyecto
+            
+            if not ruta_proyecto_actual:
+                return jsonify({"respuesta": "⚠️ Primero usa /setpath o menciona la ruta en tu mensaje"})
+            
             if not is_available():
                 status = get_provider_status()
                 return jsonify({
@@ -267,12 +402,53 @@ class Executor:
                     "status": status
                 })
 
-            ruta = utils["buscar_archivo_inteligente"](nombre, ruta_proyecto)
+            # Inicializar project analyzer con la ruta correcta
+            if not self.project_analyzer or self.project_analyzer.ruta != ruta_proyecto_actual:
+                self.project_analyzer = ProjectAnalyzer(ruta_proyecto_actual)
+            
+            ruta = utils["buscar_archivo_inteligente"](nombre, ruta_proyecto_actual)
             if not ruta:
-                return jsonify({"respuesta": f"❌ Archivo '{nombre}' no encontrado"})
+                # Proporcionar información útil sobre archivos disponibles
+                logger.warning(f"File '{nombre}' not found in {ruta_proyecto_actual}")
+                
+                # Intentar encontrar archivos similares
+                if self.project_analyzer:
+                    archivos_similares = [
+                        arch for arch in self.project_analyzer.archivos.keys()
+                        if nombre.lower() in arch.lower()
+                    ]
+                    
+                    if archivos_similares:
+                        sugerencias = ", ".join(archivos_similares[:5])
+                        return jsonify({
+                            "respuesta": f"❌ Archivo '{nombre}' no encontrado en {ruta_proyecto_actual}\n\n"
+                                       f"💡 Archivos similares encontrados:\n"
+                                       f"{chr(10).join('• ' + a for a in archivos_similares[:5])}"
+                        })
+                    else:
+                        # Mostrar algunos archivos disponibles del mismo tipo
+                        ext = os.path.splitext(nombre)[1].lower()
+                        tipo_hint = {
+                            '.py': 'python',
+                            '.dart': 'flutter',
+                            '.java': 'java',
+                            '.js': 'javascript',
+                            '.json': None  # JSON no tiene tipo específico
+                        }.get(ext)
+                        
+                        if tipo_hint:
+                            archivos_tipo = self.project_analyzer.get_archivos_por_tipo(tipo_hint)[:5]
+                            if archivos_tipo:
+                                return jsonify({
+                                    "respuesta": f"❌ Archivo '{nombre}' no encontrado en {ruta_proyecto_actual}\n\n"
+                                               f"📂 Archivos {tipo_hint} disponibles:\n"
+                                               f"{chr(10).join('• ' + a for a in archivos_tipo)}"
+                                })
+                
+                return jsonify({"respuesta": f"❌ Archivo '{nombre}' no encontrado en {ruta_proyecto_actual}"})
             
             # Validar seguridad
-            is_safe, error = security_manager.is_safe_path(ruta, ruta_proyecto)
+            is_safe, error = security_manager.is_safe_path(ruta, ruta_proyecto_actual)
             if not is_safe:
                 logger.warning(f"Security violation in analyze: {error}")
                 return jsonify({"respuesta": error})
@@ -281,8 +457,34 @@ class Executor:
             if not codigo:
                 return jsonify({"respuesta": "❌ No se pudo leer el archivo"})
 
-            analisis = analizar_codigo(codigo)
+            # Construir contexto para prompt dinámico
+            contexto_analisis = {
+                "user_message": contexto.get("mensaje", "Analiza este código"),
+                "project_type": None,  # Se detectará automáticamente
+                "files": [os.path.basename(ruta)],
+                "conversation_history": True
+            }
+            
+            start_time = time.time()
+            analisis = analizar_codigo(codigo, contexto=contexto_analisis)
+            duration = time.time() - start_time
             logger.info(f"Analysis completed for {os.path.basename(ruta)}")
+            
+            # Detectar tipo de archivo
+            file_type = os.path.splitext(ruta)[1].lstrip('.')
+            
+            # GUARDAR EN MEMORIA CONVERSACIONAL
+            self.conversation_memory.update_context(
+                intention="analyze",
+                args={"arg": os.path.basename(ruta)},
+                result=analisis,
+                metadata={
+                    "duration": duration,
+                    "file_type": file_type,
+                    "project_path": ruta_proyecto_actual
+                }
+            )
+            
             return jsonify({
                 "respuesta": f"🔍 **Análisis de {os.path.basename(ruta)}:**\n\n{analisis}"
             })
@@ -363,6 +565,18 @@ class Executor:
                 solution_summary=f"Generated {len(nuevo)} chars of {file_type} code"
             )
             
+            # ACTUALIZAR MEMORIA CONVERSACIONAL
+            self.conversation_memory.update_context(
+                intention="create",
+                args={"texto": prompt, "file_type": file_type},
+                result=nuevo[:500] if nuevo else None,
+                metadata={
+                    "duration": duration,
+                    "code_length": len(nuevo),
+                    "file_type": file_type
+                }
+            )
+            
             # Guardar memoria en disco inmediatamente
             self.experience_memory.save()
             
@@ -432,7 +646,15 @@ class Executor:
             if not codigo:
                 return jsonify({"respuesta": "❌ No se pudo leer el archivo"})
 
-            analisis = analizar_codigo(codigo)
+            # Construir contexto para prompt dinámico
+            contexto_refactor = {
+                "user_message": contexto.get("mensaje", "Refactoriza este código"),
+                "project_type": None,
+                "files": [os.path.basename(ruta)],
+                "conversation_history": True
+            }
+            
+            analisis = analizar_codigo(codigo, contexto=contexto_refactor)
             nuevo = reparar_codigo(codigo, analisis)
             if not nuevo:
                 logger.error(f"Failed to refactor {ruta}")
@@ -652,9 +874,21 @@ TU PERSONALIDAD:
 - Proactivo en sugerir ideas
 - Conversacional, no robótico
 
+REGLA CRÍTICA - CUÁNDO OMITIR SALUDOS:
+❌ NO uses saludos como "¡Hola!", "¡Buenas!", "¿Qué tal?" cuando:
+   - El usuario hace una pregunta técnica específica
+   - El usuario solicita análisis de archivos/código
+   - El usuario pide corrección de errores
+   - La conversación ya está en curso (no es el primer mensaje)
+   
+✅ SÍ usa saludos cuando:
+   - Es el primer mensaje de la conversación
+   - El usuario te saluda directamente
+   - Hay una pausa larga en la conversación
+
 CÓMO RESPONDER SEGÚN EL CONTEXTO:
 
-1. SALUDOS ("hola", "buenas", etc.):
+1. SALUDOS DIRECTOS ("hola", "buenas", etc.):
    - Varía tu saludo cada vez
    - Haz una pregunta diferente sobre su proyecto actual
    - Ejemplos variados:
@@ -675,7 +909,14 @@ CÓMO RESPONDER SEGÚN EL CONTEXTO:
    - Invita a empezar algo
    - Ejemplo: "¡Claro! Puedo ayudarte a crear apps Android, debuggear código, analizar proyectos... ¿Quieres que empecemos con algo específico?"
 
-4. SOLICITUDES DE CÓDIGO ("dame código", "muéstrame el código", "escribe código"):
+4. SOLICITUDES TÉCNICAS ("analiza", "corrige", "explica", "busca errores"):
+   - ⚠️ IMPORTANTE: NO incluyas saludo inicial
+   - Ve directo al grano con la respuesta técnica
+   - Sé conciso y preciso
+   - Ejemplo CORRECTO: "El archivo manifest.json define la configuración de tu PWA..."
+   - Ejemplo INCORRECTO: "¡Hola! El archivo manifest.json..."
+
+5. SOLICITUDES DE CÓDIGO ("dame código", "muéstrame el código", "escribe código"):
    - CONFIRMA qué tipo de código necesita
    - Pide detalles específicos del requerimiento
    - Una vez claro, genera el código usando el backend
@@ -684,9 +925,10 @@ CÓMO RESPONDER SEGÚN EL CONTEXTO:
 REGLAS CRÍTICAS:
 - NUNCA uses la misma frase dos veces
 - NUNCA listes comandos (/setpath, /create, etc.) a menos que te lo pidan explícitamente
-- Mantén respuestas de 2-4 oraciones
-- Termina con una pregunta o invitación a continuar
-- Sé específico, no genérico"""
+- Mantén respuestas de 2-4 oraciones (excepto respuestas técnicas que pueden ser más largas)
+- Termina con una pregunta o invitación a continuar (solo en conversaciones, no en respuestas técnicas)
+- Sé específico, no genérico
+- ⚠️ EN RESPUESTAS TÉCNICAS: Omite saludos, ve directo al contenido"""
 
             prompt_greeting = """Eres Kalin, un asistente cálido y dinámico.
 

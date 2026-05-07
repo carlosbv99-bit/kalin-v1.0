@@ -123,10 +123,24 @@ def detectar_intencion(mensaje: str) -> str:
 ]):
         return "greeting"
 
-    # Fix - corrección de errores (prioridad alta)
+    # =========================
+    # DETECTOR INTELIGENTE DE CONTEXTO
+    # =========================
+    
+    # Fix - corrección de errores (prioridad ALTA)
     if m.startswith("/fix") or any(palabra in m for palabra in [
         "arregla", "corrige", "fix", "repara", "soluciona", 
-        "hay un error", "no funciona", "bug", "falla", "problema"
+        "hay un error", "no funciona", "bug", "falla", "problema",
+        "encuentras errores", "hay errores", "errores en", "tiene errores",
+        "qué errores", "que errores", "detecta errores", "busca errores",
+        "está mal", "algo mal", "incorrecto", "no está bien",
+        "funciona correctamente", "está bien el código",
+        "revisa si hay", "verifica si hay", "chequea si hay",
+        # Acciones de corrección/eliminación
+        "elimina", "eliminar", "quita", "quitar", "borra", "borrar",
+        "remueve", "remover", "saca", "sacar",
+        "optimiza", "optimizar", "limpia", "limpiar",
+        "actualiza", "actualizar", "mejora", "mejorar"
     ]):
         return "fix"
 
@@ -135,16 +149,18 @@ def detectar_intencion(mensaje: str) -> str:
         "mi proyecto está en", "mi proyecto esta en", 
         "la ruta es", "configura la ruta",
         "trabaja en", "abre el proyecto", 
-        "proyecto en", "está en el disco"
+        "proyecto en", "está en el disco",
+        "carpeta del proyecto", "directorio del proyecto"
     ]):
         return "setpath"
 
-    # Scan - escanear/revisar proyecto completo
+    # Scan - escanear/revisar proyecto completo (detecta cuando habla del PROYECTO)
     if m.startswith("/scan") or any(frase in m for frase in [
         "escanea", "scan", "revisa mi proyecto", "revisar el proyecto",
         "analiza el proyecto", "estado del proyecto",
         "cómo está el proyecto", "qué hay en el proyecto",
-        "verifica el proyecto", "diagnóstico del proyecto"
+        "verifica el proyecto", "diagnóstico del proyecto",
+        "proyecto completo", "todo el proyecto", "el proyecto entero"
     ]):
         return "scan"
 
@@ -155,13 +171,23 @@ def detectar_intencion(mensaje: str) -> str:
     ]):
         return "apply"
 
-    # Analyze - analizar archivos o código específico
+    # Analyze - analizar archivos o código específico (muy flexible)
     if m.startswith("/analyze") or any(frase in m for frase in [
         "analiza", "analizar", "explica", "describe", 
         "muéstrame", "qué hace", "cómo funciona",
         "analiza los archivos", "analiza el código",
         "explícame", "detalles", "información",
-        "qué es esto", "significa", "comprender"
+        "qué es esto", "significa", "comprender",
+        "revisa el código", "verifica el código", "chequea",
+        "analiza y encuentra", "encuentra y analiza",
+        "dime sobre", "cuéntame sobre", "hablame de",
+        "quiero ver", "mostrar", "ver el",
+        "puedes analizar", "me explicas", "necesito analizar",
+        # Cuando menciona tipos de proyecto
+        "proyecto android", "app android", "aplicación android",
+        "proyecto flutter", "app flutter", "aplicación flutter",
+        "proyecto python", "script python",
+        "proyecto java", "código java"
     ]):
         return "analyze"
 
@@ -219,25 +245,92 @@ def detectar_intencion(mensaje: str) -> str:
     ]):
         return "llm_status"
 
+    # Show code - mostrar código generado o contenido de archivo
+    if any(frase in m for frase in [
+        "muestrame el codigo", "muéstrame el código",
+        "muestra el codigo", "muestra el código",
+        "ver el codigo", "ver el código",
+        "mostrar codigo", "mostrar código",
+        "dame el codigo", "dame el código",
+        "codigo completo", "código completo",
+        "todo el codigo", "todo el código"
+    ]):
+        return "show_code"
+
     # Chat conversacional (default)
     return "chat"
 
 
 def extraer_argumentos(mensaje: str, intencion: str) -> Dict[str, Any]:
-    partes = mensaje.split(" ", 1)
-
+    """
+    Extrae argumentos inteligentes del mensaje usando patrones avanzados.
+    
+    Soporta:
+    - Nombres de archivo con extensión (main.py, pubspec.yaml, etc.)
+    - Rutas de Windows (E:\carpeta, C:\proyecto\app)
+    - Referencias naturales ("mi archivo X", "el archivo Y")
+    """
+    import re
+    
     if intencion == "setpath":
         # Intenta extraer ruta de lenguaje natural
         ruta_extraida = extraer_ruta_de_mensaje(mensaje)
         if ruta_extraida:
             return {"arg": ruta_extraida}
         # Si no, usa el argumento tradicional
+        partes = mensaje.split(" ", 1)
         return {"arg": partes[1].strip() if len(partes) > 1 else None}
 
     if intencion in ["fix", "analyze", "refactor"]:
-        return {"arg": partes[1].strip() if len(partes) > 1 else None}
+        # PATRÓN 1: Buscar nombre de archivo con extensión (soporta . y , como separador)
+        file_pattern = r'([\w-]+[.,](?:py|java|dart|js|ts|html|css|json|yaml|yml|xml|txt|gradle|md))'
+        match = re.search(file_pattern, mensaje, re.IGNORECASE)
+        
+        if match:
+            filename = match.group(1).replace(',', '.')  # Normalizar coma a punto
+            
+            # PATRÓN 1.5: Buscar ruta mencionada en el mensaje (incluso si no está al final)
+            path_pattern = r'([A-Z]:\\[\w\\ ]+)'
+            path_match = re.search(path_pattern, mensaje, re.IGNORECASE)
+            
+            if path_match:
+                project_path = path_match.group(1).strip()
+                return {
+                    "arg": filename,
+                    "project_path": project_path,
+                    "has_location": True
+                }
+            
+            return {"arg": filename}
+        
+        # PATRÓN 2: Buscar ruta completa de Windows (sin nombre de archivo)
+        path_pattern = r'([A-Z]:\\[^\s"]+)'
+        match = re.search(path_pattern, mensaje, re.IGNORECASE)
+        
+        if match:
+            full_path = match.group(1)
+            return {"arg": full_path, "full_path": True}
+        
+        # PATRÓN 3: Extraer todo después del comando (fallback)
+        partes = mensaje.split(" ", 1)
+        arg_text = partes[1].strip() if len(partes) > 1 else None
+        
+        # Si hay una ruta mencionada al final, extraerla
+        if arg_text:
+            # Buscar patrón "ubicado en/an X" o "en X"
+            location_pattern = r'(?:ubicado\s+(?:en|an)|en)\s+([A-Z]:\\[^\s"]+)'
+            match = re.search(location_pattern, arg_text, re.IGNORECASE)
+            if match:
+                return {
+                    "arg": arg_text,  # Texto completo para contexto
+                    "project_path": match.group(1),  # Ruta extraída
+                    "has_location": True
+                }
+        
+        return {"arg": arg_text}
 
     if intencion == "create":
+        partes = mensaje.split(" ", 1)
         return {"texto": partes[1].strip() if len(partes) > 1 else mensaje}
 
     return {"texto": mensaje}
