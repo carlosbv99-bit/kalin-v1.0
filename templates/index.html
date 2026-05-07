@@ -571,11 +571,6 @@
       <div class="sidebar-section">
         <div class="sidebar-section-title">Instalación Manual</div>
         
-        <button class="sidebar-btn" onclick="createEnvFile()">
-          <span class="sidebar-btn-icon">⚙️</span>
-          <span>Crear Archivo de Configuración</span>
-        </button>
-        
         <button class="sidebar-btn" onclick="checkDependencies()">
           <span class="sidebar-btn-icon">🔍</span>
           <span>Verificar Dependencias</span>
@@ -603,6 +598,19 @@
         
         <div class="sidebar-info">
           Automatiza la configuración completa: entorno virtual, packages y modelos Ollama.
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Herramientas Avanzadas</div>
+        
+        <button class="sidebar-btn" onclick="viewEnvFile()">
+          <span class="sidebar-btn-icon">📄</span>
+          <span>Ver/Editar Archivo .env</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Visualiza y edita manualmente la configuración de Kalin. Solo para usuarios avanzados.
         </div>
       </div>
     </div>
@@ -1099,6 +1107,44 @@
           })
           .catch(function(error) {
             addMessage('❌ Error: ' + error.message, 'bot');
+          });
+      }
+
+      function viewEnvFile() {
+        // Cerrar el menú lateral
+        toggleSidebar();
+        
+        addMessage('📄 **Leyendo archivo de configuración .env...**', 'user');
+        
+        fetch('/system/read-env')
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var message = '📄 **Archivo de Configuración .env**\n\n';
+              message += '**Ubicación:** ' + data.path + '\n\n';
+              message += '**Contenido:**\n\n';
+              message += '```env\n';
+              message += data.content;
+              message += '\n```\n\n';
+              message += '💡 **Para editar:**\n';
+              message += '1. Abre el archivo en un editor de texto (Notepad, VS Code, etc.)\n';
+              message += '2. Modifica los valores que necesites\n';
+              message += '3. Guarda el archivo\n';
+              message += '4. Reinicia Kalin para aplicar cambios\n\n';
+              message += '⚠️ **Precaución:**\n';
+              message += '• No compartas este archivo (contiene configuraciones privadas)\n';
+              message += '• Mantén las API keys vacías si no las usas\n';
+              message += '• Reinicia Kalin después de cualquier cambio manual';
+              
+              addMessage(message, 'bot');
+            } else {
+              addMessage(data.message, 'bot');
+            }
+          })
+          .catch(function(error) {
+            addMessage('❌ Error al leer .env: ' + error.message, 'bot');
           });
       }
 

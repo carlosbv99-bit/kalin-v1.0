@@ -568,17 +568,31 @@ def current_model():
         
         current = os.getenv('OLLAMA_MODEL', 'deepseek-coder:6.7b')
         
-        # Obtener lista de modelos instalados con detalles
+        # Forzar refresh de modelos Ollama
         installed_models = []
         model_details = []
         
+        print("🔍 Buscando modelos instalados en Ollama...")
+        
+        # Método 1: Usar API de Ollama a través del proveedor
         if 'ollama' in manager.providers:
             ollama_provider = manager.providers['ollama']
-            if hasattr(ollama_provider, 'get_available_models'):
+            # Forzar actualización de la lista de modelos
+            if hasattr(ollama_provider, 'refresh_models'):
+                try:
+                    installed_models = ollama_provider.refresh_models()
+                    print(f"✅ Modelos desde API: {installed_models}")
+                except Exception as e:
+                    print(f"⚠️ Error usando API: {e}")
+            elif hasattr(ollama_provider, 'get_available_models'):
                 installed_models = ollama_provider.get_available_models()
+                print(f"✅ Modelos desde cache: {installed_models}")
+        else:
+            print("⚠️ Proveedor Ollama no encontrado")
         
-        # Obtener detalles de cada modelo (tamaño, versión)
+        # Método 2: Usar CLI de Ollama como respaldo
         try:
+            print("🔍 Verificando con 'ollama list'...")
             result = subprocess.run(
                 ['ollama', 'list'],
                 capture_output=True,
@@ -588,6 +602,7 @@ def current_model():
             
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')[1:]  # Saltar header
+                cli_models = []
                 for line in lines:
                     if line.strip():
                         parts = line.split()
@@ -599,8 +614,20 @@ def current_model():
                                 'size': model_size,
                                 'installed': True
                             })
+                            cli_models.append(model_name)
+                            # Agregar a installed_models si no está
+                            if model_name not in installed_models:
+                                installed_models.append(model_name)
+                print(f"✅ Modelos detectados desde CLI: {cli_models}")
+            else:
+                print(f"⚠️ Error en CLI: {result.stderr}")
+        except FileNotFoundError:
+            print("❌ Comando 'ollama' no encontrado. ¿Está instalado?")
         except Exception as e:
             print(f"⚠️ Error obteniendo detalles de modelos: {e}")
+        
+        print(f"📊 Total modelos encontrados: {len(installed_models)}")
+        print(f"📊 Modelos: {installed_models}")
         
         return jsonify({
             'status': 'success',
@@ -609,6 +636,9 @@ def current_model():
             'model_details': model_details if model_details else [{'name': m, 'size': 'Unknown', 'installed': True} for m in installed_models]
         })
     except Exception as e:
+        print(f"❌ Error en /system/current-model: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'status': 'error',
             'message': f'Error: {str(e)}'
@@ -842,6 +872,36 @@ oLink.Save
         return jsonify({
             'status': 'error',
             'message': f'❌ Error: {str(e)}'
+        }), 500
+
+@app.route("/system/read-env")
+def read_env_file():
+    """Lee y devuelve el contenido del archivo .env"""
+    import os
+    
+    try:
+        env_path = os.path.join(os.getcwd(), '.env')
+        
+        if not os.path.exists(env_path):
+            return jsonify({
+                'status': 'error',
+                'message': '❌ El archivo .env no existe. Crea uno primero desde el menú de instalación.'
+            }), 404
+        
+        # Leer contenido del archivo
+        with open(env_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        return jsonify({
+            'status': 'success',
+            'content': content,
+            'path': env_path
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al leer .env: {str(e)}'
         }), 500
 
 # ==============================
