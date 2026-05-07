@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778171080",
+  "messages": [
+    {
+      "role": "user",
+      "content": "dame el codigo de un calendario simple en python",
+      "timestamp": 1778171080.502067,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "```python\nimport calendar\nfrom datetime import date\n\ndef generar_calendario(anio=None, mes=None):\n    if anio is None:\n        anio = date.today().year\n    if mes is None:\n        mes = date.today().month\n    cal = calendar.TextCalendar(firstweekday=6)\n    return cal.formatmonth(anio, mes)\n\nif __name__ == \"__main__\":\n    print(generar_calendario())\n```",
+      "timestamp": 1778171107.830861,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T18:24:40.502067",
+    "last_activity": "2026-05-07T18:25:07.830861",
+    "message_count": 2
+  }
+}

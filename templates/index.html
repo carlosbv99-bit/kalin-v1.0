@@ -27,6 +27,169 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        position: relative;
+        z-index: 100;
+      }
+
+      /* ===== NUEVO LAYOUT: Chat derecha, Código centro ===== */
+      .main-layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Área de código (centro) - 65% */
+      .code-area {
+        flex: 1;
+        background: #f8f9fa;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Área de chat (derecha) - 35% */
+      .chat-sidebar {
+        width: 35%;
+        min-width: 380px;
+        max-width: 500px;
+        border-left: 2px solid #e5e5e5;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chat-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e5e5;
+        font-weight: 600;
+        font-size: 14px;
+        color: #666;
+        background: #fafafa;
+      }
+
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .chat-input-container {
+        padding: 16px 20px;
+        border-top: 1px solid #e5e5e5;
+        background: #fafafa;
+      }
+
+      .chat-input-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border: 1px solid #e5e5e5;
+        border-radius: 24px;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      #chat-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 15px;
+        background: transparent;
+      }
+
+      /* Placeholder cuando no hay código */
+      .code-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #999;
+        text-align: center;
+      }
+
+      .code-placeholder-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.3;
+      }
+
+      .code-placeholder-text {
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+
+      .code-placeholder-subtext {
+        font-size: 14px;
+        color: #bbb;
+      }
+
+      /* Contenedor de código generado */
+      .code-display {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .code-display-header {
+        padding: 12px 16px;
+        background: #f6f8fa;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+      }
+
+      .code-display-body {
+        position: relative;
+        overflow-x: auto;
+      }
+
+      /* Estilo para bloques de código en el área de código */
+      .code-display pre {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.8;
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      .code-display pre code {
+        display: block;
+        padding: 16px 16px 16px 60px;
+        background: transparent;
+      }
+
+      /* Números de línea profesionales */
+      .code-line-numbers {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 50px;
+        background: #f5f5f5;
+        border-right: 1px solid #e0e0e0;
+        padding: 16px 8px;
+        text-align: right;
+        color: #999;
+        font-size: 13px;
+        line-height: 1.8;
+        user-select: none;
+        overflow: hidden;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       }
 
       .logo {
@@ -117,14 +280,39 @@
         background: #f6f8fa;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        padding: 16px;
+        padding: 0;
         margin: 10px 0;
         overflow-x: auto;
         font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 14px;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        line-height: 1.8;
+        white-space: pre;
+        word-wrap: normal;
+        position: relative;
+      }
+
+      .message pre code {
+        display: block;
+        padding: 16px 16px 16px 60px;
+        background: transparent;
+      }
+
+      /* Números de línea */
+      .code-line-numbers {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 50px;
+        background: #f0f0f0;
+        border-right: 1px solid #e5e7eb;
+        padding: 16px 8px;
+        text-align: right;
+        color: #999;
+        font-size: 13px;
+        line-height: 1.8;
+        user-select: none;
+        overflow: hidden;
       }
 
       .message code {
@@ -652,39 +840,69 @@
 
     <div class="header">
       <span style="font-weight: 600; margin-left: 52px;">Kalin v1.0</span>
+      <span id="active-model-indicator" style="margin-left: 16px; padding: 4px 12px; background: #f0f7ff; border: 1px solid #0066ff; border-radius: 12px; font-size: 13px; color: #0066ff; font-weight: 500;">
+        🤖 Cargando modelo...
     </div>
 
-    <div class="chat-area" id="chat-area">
-      <!-- Pantalla de bienvenida -->
-      <div class="welcome-screen" id="welcome-screen">
-        <img src="/static/logo.png" alt="Kalin Logo" class="welcome-logo" 
-             onerror="this.style.display='none';">
-        <div class="welcome-text">¿En qué puedo ayudarte hoy?</div>
-      </div>
-      
-      <div class="messages-container" id="messages"></div>
-    </div>
-
-    <div class="input-container">
-      <div class="input-wrapper">
-        <div class="input-box">
-          <input
-            type="text"
-            id="input"
-            placeholder="Envía un mensaje a Kalin"
-            onkeypress="handleKeyPress(event)"
-          />
-          <button class="btn btn-mic" onclick="toggleMic()" id="mic-btn">
-            🎤
-          </button>
-          <button class="btn btn-send" onclick="sendMessage()" id="send-btn">
-            ↑
-          </button>
+    <!-- LAYOUT: Chat izquierda, Código centro -->
+    <div class="main-layout">
+      <!-- Chat (izquierda) -->
+      <div class="chat-sidebar">
+        <div class="chat-header">💬 Chat con Kalin</div>
+        
+        <div class="chat-messages" id="chat-messages"></div>
+        
+        <div class="chat-input-container">
+          <div class="chat-input-box">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Escribe tu mensaje..."
+              onkeypress="handleKeyPress(event)"
+            />
+            <button class="btn btn-mic" onclick="toggleMic()" id="mic-btn">🎤</button>
+            <button class="btn btn-send" onclick="sendMessage()" id="send-btn">↑</button>
+          </div>
         </div>
+      </div>
+
+      <!-- Código (centro/principal) -->
+      <div class="code-area" id="code-area">
+        <div class="code-placeholder" id="code-placeholder">
+          <div class="code-placeholder-icon">💻</div>
+          <div class="code-placeholder-text">El código generado aparecerá aquí</div>
+          <div class="code-placeholder-subtext">Pide a Kalin que cree algo</div>
+        </div>
+        <div id="code-display-container" style="display: none;"></div>
       </div>
     </div>
 
     <script>
+      function updateActiveModelIndicator() {
+        // Cargar el modelo activo y mostrarlo en el header
+        fetch('/system/current-model')
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var indicator = document.getElementById('active-model-indicator');
+              if (indicator && data.current_model) {
+                indicator.textContent = '🤖 ' + data.current_model;
+                indicator.title = 'Modelo de IA activo: ' + data.current_model;
+              }
+            }
+          })
+          .catch(function(error) {
+            console.error('Error cargando modelo activo:', error);
+          });
+      }
+
+      // Cargar modelo activo al iniciar la página
+      window.addEventListener('load', function() {
+        updateActiveModelIndicator();
+      });
+
       var recognition = null;
       var isRecording = false;
 
@@ -701,10 +919,12 @@
 
         recognition.onresult = function (event) {
           var transcript = event.results[0][0].transcript;
-          var input = document.getElementById("input");
-          input.value = transcript;
-          stopRecording();
-          updateButton();
+          var input = document.getElementById("chat-input");
+          if (input) {
+            input.value = transcript;
+            stopRecording();
+            updateButton();
+          }
         };
 
         recognition.onerror = function (event) {
@@ -726,15 +946,17 @@
       }
 
       function sendMessage() {
-        var input = document.getElementById("input");
+        var input = document.getElementById("chat-input");
+        if (!input) {
+          console.error('❌ Input chat-input not found!');
+          return;
+        }
+        
         var message = input.value.trim();
 
         if (!message) {
           return;
         }
-
-        // Ocultar pantalla de bienvenida al primer mensaje
-        hideWelcomeScreen();
 
         addMessage(message, "user");
         input.value = "";
@@ -760,8 +982,21 @@
           });
       }
 
+      function updateButton() {
+        var input = document.getElementById("chat-input");
+        var btn = document.getElementById("send-btn");
+        if (input && btn) {
+          btn.disabled = !input.value.trim();
+        }
+      }
+
       function addMessage(text, sender) {
-        var container = document.getElementById("messages");
+        var container = document.getElementById("chat-messages");
+        if (!container) {
+          console.error('❌ Container chat-messages not found!');
+          return;
+        }
+        
         var div = document.createElement("div");
         div.className = "message " + sender;
         
@@ -774,16 +1009,119 @@
         
         div.innerHTML = html;
         container.appendChild(div);
-
-        var chatArea = document.getElementById("chat-area");
-        chatArea.scrollTop = chatArea.scrollHeight;
+        
+        // Agregar números de línea a los bloques de código en el chat
+        addLineNumbers(div);
+        
+        // Scroll al final del chat
+        container.scrollTop = container.scrollHeight;
+        
+        // Si es un mensaje del bot con código, también mostrarlo en el área central
+        if (sender === 'bot' && text.includes('```')) {
+          displayCodeInMainArea(text);
+        }
       }
 
-      function updateButton() {
-        var input = document.getElementById("input");
-        var btn = document.getElementById("send-btn");
-        btn.disabled = !input.value.trim();
+      function displayCodeInMainArea(text) {
+        // Extraer código de los bloques markdown
+        var regex = /```(\w+)?\n([\s\S]*?)```/g;
+        var match = regex.exec(text);
+        
+        if (!match) return;
+        
+        var language = match[1] || 'code';
+        var code = match[2];
+        
+        var placeholder = document.getElementById('code-placeholder');
+        var container = document.getElementById('code-display-container');
+        
+        if (!container) return;
+        
+        // Ocultar placeholder
+        if (placeholder) {
+          placeholder.style.display = 'none';
+        }
+        
+        // Mostrar contenedor
+        container.style.display = 'block';
+        
+        // Crear display de código
+        var codeDisplay = document.createElement('div');
+        codeDisplay.className = 'code-display';
+        
+        var header = document.createElement('div');
+        header.className = 'code-display-header';
+        header.textContent = '✅ Código ' + language.toUpperCase() + ' generado';
+        
+        var body = document.createElement('div');
+        body.className = 'code-display-body';
+        
+        var pre = document.createElement('pre');
+        var codeElement = document.createElement('code');
+        codeElement.textContent = code;
+        
+        pre.appendChild(codeElement);
+        body.appendChild(pre);
+        codeDisplay.appendChild(header);
+        codeDisplay.appendChild(body);
+        
+        // Limpiar y agregar
+        container.innerHTML = '';
+        container.appendChild(codeDisplay);
+        
+        // Agregar números de línea al código principal
+        addLineNumbers(codeDisplay);
       }
+
+      function addLineNumbers(messageDiv) {
+        console.log('🔍 Buscando bloques de código para agregar números...');
+              
+        // Buscar todos los bloques pre en el mensaje
+        var preBlocks = messageDiv.querySelectorAll('pre');
+        console.log('📊 Bloques <pre> encontrados:', preBlocks.length);
+              
+        preBlocks.forEach(function(pre, index) {
+          console.log('Procesando bloque', index + 1);
+                
+          // Verificar si ya tiene números de línea
+          if (pre.querySelector('.code-line-numbers')) {
+            console.log('⚠️ Ya tiene números, saltando');
+            return; // Ya tiene, saltar
+          }
+                
+          var code = pre.querySelector('code');
+          if (!code) {
+            console.log('❌ No hay elemento <code>');
+            return;
+          }
+                
+          // Obtener el contenido del código
+          var codeText = code.textContent;
+          console.log('📝 Longitud del código:', codeText.length);
+                
+          var lines = codeText.split('\n');
+          console.log(' Número de líneas:', lines.length);
+                
+          // Crear contenedor de números de línea
+          var lineNumbers = document.createElement('div');
+          lineNumbers.className = 'code-line-numbers';
+                
+          // Generar números con <br> para saltos de línea
+          var numbersHtml = '';
+          for (var i = 1; i <= lines.length; i++) {
+            numbersHtml += i + '<br>';
+          }
+          lineNumbers.innerHTML = numbersHtml;
+                
+          console.log('✅ Insertando números de línea');
+                
+          // Insertar antes del code
+          pre.insertBefore(lineNumbers, code);
+        });
+              
+        console.log('✅ Proceso completado');
+      }
+
 
       function toggleMic() {
         if (!recognition) {
@@ -855,9 +1193,11 @@
         toggleSidebar();
         
         // Enviar mensaje al backend
-        var input = document.getElementById("input");
-        input.value = "exportar experiencia";
-        sendMessage();
+        var input = document.getElementById("chat-input");
+        if (input) {
+          input.value = "exportar experiencia";
+          sendMessage();
+        }
       }
 
       function importExperience() {
@@ -869,9 +1209,11 @@
         
         if (filePath && filePath.trim()) {
           // Enviar mensaje al backend con la ruta
-          var input = document.getElementById("input");
-          input.value = "importar experiencia " + filePath;
-          sendMessage();
+          var input = document.getElementById("chat-input");
+          if (input) {
+            input.value = "importar experiencia " + filePath;
+            sendMessage();
+          }
         }
       }
 
@@ -1512,6 +1854,8 @@
           .then(function(data) {
             if (data.status === 'success') {
               addMessage(data.message, 'bot');
+              // Actualizar indicador en el header
+              updateActiveModelIndicator();
             } else {
               addMessage(data.message, 'bot');
             }
@@ -1704,7 +2048,7 @@
           });
       }
 
-      document.getElementById("input").addEventListener("input", updateButton);
+      document.getElementById("chat-input").addEventListener("input", updateButton);
       updateButton();
     </script>
   </body>

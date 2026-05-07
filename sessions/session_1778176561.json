@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778176561",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1778176561.9875903,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Tienes alguna idea interesante en mente?",
+      "timestamp": 1778176595.7813916,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T19:56:01.986246",
+    "last_activity": "2026-05-07T19:56:35.781391",
+    "message_count": 2
+  }
+}

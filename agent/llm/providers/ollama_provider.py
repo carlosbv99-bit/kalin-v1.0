@@ -39,6 +39,9 @@ class OllamaProvider(BaseLLMProvider):
         super().__init__(config)
         self._available_models = []
         self._last_refresh = 0
+        # Aumentar timeout para modelos locales (pueden ser lentos)
+        if not config or 'timeout' not in config:
+            self.timeout = 120  # 2 minutos para Ollama
 
     def refresh_models(self):
         """Refresca la lista de modelos disponibles en Ollama"""

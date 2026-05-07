@@ -28,23 +28,55 @@ def extract_code(input_data):
 
 
 def es_chatbot(respuesta: str) -> bool:
+    """Detecta si la respuesta es tipo chatbot en lugar de código"""
     if not respuesta:
         return True
 
-    basura = [
-        "this code",
-        "este código",
-        "explica",
-        "explanation",
-        "the function",
-        "this function",
-        "this answer",
-        "soporte",
-        "lo siento",
+    # FRASES CONVERSACIONALES QUE INDICAN CHATBOT
+    frases_chatbot = [
+        # Saludos y exclamaciones
+        "excelente", "genial", "perfecto", "fantástico", "estupendo",
+        "¡excelente", "¡genial", "¡perfecto", "¡fantástico",
+        # Preguntas al usuario
+        "¿podrías", "¿te gustaría", "¿qué opinas", "¿prefieres",
+        "¿tienes alguna", "¿cuál es", "¿podríamos",
+        # Frases de inicio conversacional
+        "empecemos", "vamos a", "comencemos", "para empezar",
+        "antes de", "para continuar", "para mejorar",
+        # Frases de oferta de ayuda
+        "puedo ayudarte", "puedo crear", "puedo hacer",
+        "estoy listo", "estoy aquí", "dime",
+        # Texto que NO es código
+        "este código", "this code", "el siguiente código",
+        "aquí tienes", "here is", "this is the",
+        # Disculpas y negativas
+        "lo siento", "i'm sorry", "no puedo",
+        "no estoy seguro", "no sé",
+        # Explicaciones
+        "explicación", "explanation", "the function",
+        "this function", "esta función",
     ]
 
     r = respuesta.lower()
-    return any(b in r for b in basura)
+    
+    # Contar cuántas frases chatbot aparecen
+    coincidencias = sum(1 for frase in frases_chatbot if frase in r)
+    
+    # Si hay 2 o más frases chatbot, ES CHATBOT
+    if coincidencias >= 2:
+        return True
+    
+    # Si la respuesta NO tiene estructura de código, ES CHATBOT
+    tiene_codigo = any(patron in r for patron in [
+        'def ', 'class ', 'import ', 'function', 'public ',
+        'private ', 'package ', '<!doctype', '<html', '<script',
+        'console.log', 'print(', 'system.out'
+    ])
+    
+    if not tiene_codigo and len(respuesta) > 50:
+        return True
+    
+    return False
 
 
 def score_codigo(codigo: str) -> int:
@@ -264,10 +296,10 @@ def _generar_candidato(prompt: str, max_tokens: int = 1200) -> str:
     print(f"Longitud del prompt: {len(prompt)} chars")
     print("="*80 + "\n")
     
-    # Detectar si es HTML para usar menos tokens (más rápido)
+    # Detectar si es HTML para usar configuración optimizada
     es_html = '<!DOCTYPE' in prompt or 'HTML' in prompt.upper()
-    if es_html and max_tokens > 800:
-        max_tokens = 800  # Reducir para HTML simple
+    if es_html and max_tokens > 1200:
+        max_tokens = 1200  # Aumentado de 800 a 1200 para HTML más complejo
     
     # FORZAR uso de DeepSeek (backend) con use_case="create"
     respuesta = generate(prompt, max_tokens=max_tokens, use_case="create")
@@ -486,31 +518,36 @@ function main() {{ // Comentario inline
     console.log("test");
 }}"""
 
-    prompt = f"""ROL: GENERADOR DE CÓDIGO PROFESIONAL - MODO ULTRA ESTRICTO
+    prompt = f"""ERES UN GENERADOR DE CÓDIGO, NO UN ASISTENTE CONVERSACIONAL.
 
-REGLAS ABSOLUTAS (NO VIOLAR NINGUNA):
-1. Genera ÚNICAMENTE código {lenguaje} funcional y completo
-2. PROHIBIDO cualquier comentario (#, //, /* */, docstrings, <!-- -->)
-3. PROHIBIDO texto explicativo antes o después del código
-4. PROHIBIDO markdown (```) o formato especial
-5. El código debe empezar DIRECTAMENTE con la estructura propia de {lenguaje}
-6. Sin docstrings, sin comentarios inline, sin nada excepto código puro
-7. Código debe ser EXECUTABLE y bien estructurado
-8. Usa nombres de variables descriptivos
-9. Mantén indentación consistente
+REGLAS ABSOLUTAS (VIOLAR CUALQUIERA = FRACASO):
+1. GENERA DIRECTAMENTE código {lenguaje} funcional y completo
+2. NUNCA hagas preguntas al usuario
+3. NUNCA expliques qué vas a hacer
+4. NUNCA pidas información adicional
+5. NUNCA uses frases como "Excelente elección", "Empecemos", "¿Podrías decirme?"
+6. NUNCA incluyas comentarios de ningún tipo
+7. NUNCA uses markdown (```) o formato especial
+8. El código DEBE empezar en la PRIMERA línea con estructura de {lenguaje}
+9. NUNCA agregues texto antes o después del código
 10. Si no puedes cumplir estas reglas, devuelve cadena vacía
-{instrucciones_extra}
 
-EJEMPLO DE LO QUE QUIERO (CÓDIGO LIMPIO EN {lenguaje.upper()}):
-{ejemplo_bueno}
+FORMATO CORRECTO:
+import calendar
 
-EJEMPLO DE LO QUE NO QUIERO (TIENE COMENTARIOS O ES MALO):
-{ejemplo_malo}
+def generar_calendario():
+    pass
 
-REQUERIMIENTO DEL USUARIO:
+FORMATO INCORRECTO:
+¡Excelente! Aquí tienes el código...
+```python
+import calendar
+```
+
+REQUERIMIENTO:
 {requerimiento}
 
-RESPUESTA (SOLO CÓDIGO PURO Y PROFESIONAL SIN COMENTARIOS EN {lenguaje.upper()}:"""
+GENERA AHORA SOLO EL CÓDIGO {lenguaje.upper()}:"""
 
     candidatos = []
     for intento in range(max_intentos):
@@ -564,17 +601,14 @@ def _es_diff_valido(texto: str) -> bool:
 def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
     """
     Valida que el código generado tenga calidad mínima aceptable.
+    RELAJADO para modelos locales Ollama (menos estricto).
     
     Criterios:
     - Longitud mínima (no trivial)
-    - No contiene patrones sospechosos
     - Estructura básica correcta
-    - Sin funciones internas privadas
-    - Sin comentarios excesivos
-    - Sin imports duplicados
-    - Sin código repetitivo
+    - Sin patrones muy sospechosos
     """
-    if not codigo or len(codigo.strip()) < 50:
+    if not codigo or len(codigo.strip()) < 30:  # Reducido de 50 a 30
         return False
     
     # Verificar que no tenga comentarios (ya deberían haberse eliminado)
@@ -638,30 +672,25 @@ def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
         if tiene_imports and not tiene_funciones:
             return False  # Solo imports sin código real
     
-    # Para HTML, verificar estructura básica
+    # Para HTML, verificar estructura básica (RELAJADO para Ollama)
     elif lenguaje.lower() == 'html':
         # Aceptar HTML básico: debe tener al menos <html> o <!DOCTYPE>
-        if '<!DOCTYPE' not in codigo and '<html' not in codigo:
+        html_lower = codigo.lower()
+        if '<!doctype' not in html_lower and '<html' not in html_lower:
             return False  # No es HTML válido
-        
-        # RELAJADO: Permitir HTML sin tags de cierre completos (el modelo puede fallar)
-        # Solo verificar que NO esté completamente roto
-        
+            
+        # RELAJADO: Permitir HTML incompleto de modelos pequeños
+        # Solo rechazar si está MUY roto
+            
         # DETECTAR HTML MUY roto (tags con espacios entre letras)
         if re.search(r'<\s*t\s+h\s+s', codigo):  # <t h s ... > es HTML MUY roto
             return False
-        
-        # DETECTAR atributos MUY inválidos (scope = '' con múltiples espacios)
-        if re.search(r'scope\s*=\s*[\'"]\s*[\'"]', codigo):
+            
+        # Verificar longitud razonable para HTML simple
+        if len(codigo) > 10000:  # Aumentado de 5000 a 10000
             return False
-        
-        # RELAJADO: No rechazar por comentarios (los eliminaremos después)
-        # if '<!--' in codigo:
-        #     return False
-        
-        # Verificar que el código no sea excesivamente largo (>5000 chars para HTML)
-        if len(codigo) > 5000:
-            return False
+            
+        # ACEPTAR aunque tenga comentarios (se eliminarán después)
     
     # Para JavaScript/TypeScript
     elif lenguaje.lower() in ['javascript', 'typescript']:
@@ -692,11 +721,21 @@ def calcular_score_calidad(codigo: str) -> float:
     elif longitud > 50:
         score += 0.1
     
-    # Nombres descriptivos (max 0.3 puntos)
+    # HTML: estructura completa (max 0.5 puntos)
+    if '<!DOCTYPE' in codigo or '<html' in codigo:
+        score += 0.2
+    if '<head>' in codigo or '<head ' in codigo:
+        score += 0.1
+    if '<body>' in codigo or '<body ' in codigo:
+        score += 0.1
+    if '<table>' in codigo or '<table ' in codigo:
+        score += 0.1
+    
+    # Python/otros: nombres descriptivos (max 0.3 puntos)
     if all(nombre not in codigo for nombre in [' gen_cal(', ' c =', ' a, m)']):
         score += 0.3
     
-    # Estructura completa (max 0.2 puntos)
+    # Python: estructura completa (max 0.2 puntos)
     if 'if __name__' in codigo or 'def main' in codigo:
         score += 0.2
     elif codigo.count('def ') >= 2:
@@ -717,22 +756,19 @@ def reparar_codigo(codigo: str, analisis: str = "", es_flutter: bool = False, ma
     codigo_procesado = extract_code(codigo)
     codigo_base = codigo_procesado[:2000]
     
-    prompt = f"""
-Eres un experto en programación.
-
-Corrige el siguiente código y devuelve el código COMPLETO corregido.
-
-REGLAS OBLIGATORIAS:
-- Devuelve SOLO el código completo corregido
-- NO expliques nada
-- NO uses texto antes o después
-- NO uses markdown (```)
-- NO uses formato diff
-- Escribe el código completo directamente
-
-CÓDIGO A CORREGIR:
-{codigo_base}
-"""
+    prompt = (
+        "Eres un experto en programación.\n\n"
+        "Corrige el siguiente código y devuelve el código COMPLETO corregido.\n\n"
+        "REGLAS OBLIGATORIAS:\n"
+        "- Devuelve SOLO el código completo corregido\n"
+        "- NO expliques nada\n"
+        "- NO uses texto antes o después\n"
+        "- NO uses markdown (```)\n"
+        "- NO uses formato diff\n"
+        "- Escribe el código completo directamente\n\n"
+        "CÓDIGO A CORREGIR:\n"
+        + codigo_base
+    )
 
     # LOG DEL PROMPT REAL QUE VA AL LLM
     print("\n" + "="*80)
