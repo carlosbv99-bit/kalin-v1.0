@@ -1,94 +1,77 @@
-"""
-Script para ejecutar todos los tests y capturar errores
-"""
+# Kalin AI - Professional Test Suite
+# Execute all tests before deployment
+
 import subprocess
 import sys
-from pathlib import Path
+import os
 
-def run_test(test_file):
-    """Ejecuta un archivo de test y devuelve el resultado"""
-    print(f"\n{'='*70}")
-    print(f"EJECUTANDO: {test_file}")
-    print('='*70)
-    
+def print_header(text):
+    print("\n" + "="*60)
+    print(f"  {text}")
+    print("="*60 + "\n")
+
+def run_test(test_name, command):
+    """Run a test and report results"""
+    print_header(f"Running: {test_name}")
     try:
         result = subprocess.run(
-            [sys.executable, str(test_file)],
+            command,
+            shell=True,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutos timeout
+            timeout=300
         )
         
-        print(result.stdout)
-        if result.stderr:
-            print("STDERR:")
-            print(result.stderr)
-        
-        return {
-            'file': test_file,
-            'success': result.returncode == 0,
-            'returncode': result.returncode,
-            'stdout': result.stdout,
-            'stderr': result.stderr
-        }
+        if result.returncode == 0:
+            print(f"✅ {test_name} PASSED")
+            return True
+        else:
+            print(f"❌ {test_name} FAILED")
+            print("STDOUT:", result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
+            print("STDERR:", result.stderr[-500:] if len(result.stderr) > 500 else result.stderr)
+            return False
     except subprocess.TimeoutExpired:
-        return {
-            'file': test_file,
-            'success': False,
-            'returncode': -1,
-            'stdout': '',
-            'stderr': 'TIMEOUT: El test tardó más de 5 minutos'
-        }
+        print(f"⏱️  {test_name} TIMEOUT")
+        return False
     except Exception as e:
-        return {
-            'file': test_file,
-            'success': False,
-            'returncode': -1,
-            'stdout': '',
-            'stderr': f'ERROR: {str(e)}'
-        }
+        print(f"❌ {test_name} ERROR: {str(e)}")
+        return False
 
 def main():
-    """Ejecutar todos los tests"""
-    test_files = [
-        Path('E:/kalin/test_funcional.py'),
-        Path('E:/kalin/test_endpoints.py'),
-        Path('E:/kalin/test_llm_providers.py'),
-        Path('E:/kalin/test_new_architecture.py'),
-        Path('E:/kalin/test_new_components.py'),
+    print_header("KALIN AI - PROFESSIONAL TEST SUITE")
+    
+    tests = [
+        ("Syntax Check", "python -m py_compile web.py"),
+        ("Import Check", "python -c \"import flask; import agent.core.orchestrator\""),
+        ("Unit Tests", "python -m pytest tests/ -v --tb=short"),
+        ("Integration Tests", "python -m pytest tests/integration/ -v --tb=short"),
+        ("API Endpoint Tests", "python test_endpoints.py"),
+        ("LLM Provider Tests", "python test_llm_providers.py"),
     ]
     
     results = []
+    for test_name, command in tests:
+        passed = run_test(test_name, command)
+        results.append((test_name, passed))
     
-    for test_file in test_files:
-        if test_file.exists():
-            result = run_test(test_file)
-            results.append(result)
-        else:
-            print(f"⚠️  Archivo no encontrado: {test_file}")
+    # Summary
+    print_header("TEST SUMMARY")
     
-    # Resumen
-    print("\n" + "="*70)
-    print("RESUMEN DE TESTS")
-    print("="*70)
+    passed_count = sum(1 for _, passed in results if passed)
+    total_count = len(results)
     
-    passed = sum(1 for r in results if r['success'])
-    failed = len(results) - passed
+    for test_name, passed in results:
+        status = "✅ PASSED" if passed else "❌ FAILED"
+        print(f"{status:12} - {test_name}")
     
-    for result in results:
-        status = "✅ PASÓ" if result['success'] else "❌ FALLÓ"
-        print(f"{result['file'].name:40} {status}")
+    print(f"\nTotal: {passed_count}/{total_count} tests passed")
     
-    print(f"\nTotal: {passed}/{len(results)} tests pasaron")
-    print("="*70)
-    
-    if failed > 0:
-        print(f"\n⚠️  {failed} test(s) fallaron. Revisa los errores arriba.")
-        return False
+    if passed_count == total_count:
+        print("\n🎉 ALL TESTS PASSED! Ready for specialist review.")
+        return 0
     else:
-        print("\n🎉 ¡TODOS LOS TESTS PASARON!")
-        return True
+        print(f"\n⚠️  {total_count - passed_count} test(s) failed. Fix issues before deployment.")
+        return 1
 
-if __name__ == '__main__':
-    success = main()
-    sys.exit(0 if success else 1)
+if __name__ == "__main__":
+    sys.exit(main())

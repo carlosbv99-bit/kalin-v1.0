@@ -1,0 +1,31 @@
+{
+  "total_experiences": 1,
+  "total_successes": 1,
+  "total_failures": 0,
+  "success_rate_by_type": {
+    "create": {
+      "successes": 1,
+      "total": 1,
+      "rate": 1.0
+    }
+  },
+  "success_rate_by_strategy": {
+    "default": {
+      "successes": 1,
+      "total": 1,
+      "rate": 1.0
+    }
+  },
+  "success_rate_by_file_type": {
+    "html": {
+      "successes": 1,
+      "total": 1,
+      "rate": 1.0
+    }
+  },
+  "average_confidence": 0.85,
+  "most_common_problems": [],
+  "best_strategies": {},
+  "learning_started_at": 1778159071.264371,
+  "last_updated": 1778159730.1148708
+}

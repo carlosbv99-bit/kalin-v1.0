@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778141325",
+  "messages": [
+    {
+      "role": "user",
+      "content": "crea un calendario simple (solo fechas) en html",
+      "timestamp": 1778141325.2992384,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.",
+      "timestamp": 1778141436.3784742,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T10:08:45.299238",
+    "last_activity": "2026-05-07T10:10:36.378474",
+    "message_count": 2
+  }
+}

@@ -2,6 +2,7 @@ from agent.core.brain import construir_contexto, planificar
 from agent.actions.executor import Executor
 from agent.core.logger import get_logger
 from agent.core.conversation_manager import ConversationManager
+from agent.core.experience_memory import get_experience_memory
 from agent.core.security import security_manager
 from agent.core.prompt_security import prompt_detector, result_verifier, action_guardian
 import time
@@ -12,7 +13,8 @@ class Orchestrator:
     def __init__(self):
         self.executor = Executor()
         self.conversation_manager = None
-        logger.info("Orchestrator initialized")
+        self.experience_memory = get_experience_memory()
+        logger.info("Orchestrator initialized with ExperienceMemory")
 
     def handle(self, mensaje, estado, utils):
         """

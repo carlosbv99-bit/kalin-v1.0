@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778154563",
+  "messages": [
+    {
+      "role": "user",
+      "content": "crea un calendario del mes de mayo del 2026 en html",
+      "timestamp": 1778154563.5472744,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Tienes alguna idea interesante en mente?\n\nAquí tienes un ejemplo básico de cómo crear un calendario del mes de mayo de 2026 en HTML:\n\n```html\n<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Calendario de Mayo 2026</title>\n    <style>\n        table {\n            width: 100%;\n            border-collapse: collapse;\n        }\n        th, td {\n            border: 1px solid #ddd;\n            padding: 8px;\n            text-align: center;\n        }\n        th {\n            background-color: #f2f2f2;\n        }\n    </style>\n</head>\n<body>\n    <h1>Calendario de Mayo 2026</h1>\n    <table>\n        <tr>\n            <th>Lunes</th>\n            <th>Martes</th>\n            <th>Miércoles</th>\n            <th>Jueves</th>\n            <th viernes</th>\n            <th>Sábado</th>\n            <th>Domingo</th>\n        </tr>\n        <tr>\n            <td></td>\n            <td></td>\n            <td></td>\n            <td></td>\n            <td",
+      "timestamp": 1778154645.9092674,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T13:49:23.545875",
+    "last_activity": "2026-05-07T13:50:45.909267",
+    "message_count": 2
+  }
+}

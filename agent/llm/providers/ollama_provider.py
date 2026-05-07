@@ -43,30 +43,57 @@ class OllamaProvider(BaseLLMProvider):
         except Exception:
             return False
 
-    def generate(self, prompt: str, max_tokens: int = 1200) -> Optional[LLMResponse]:
-        """Genera respuesta usando Ollama"""
+    def generate(self, prompt: str, max_tokens: int = 1200, temperature: float = None) -> Optional[LLMResponse]:
+        """
+        Genera respuesta usando Ollama
+        
+        Args:
+            prompt: Texto a procesar
+            max_tokens: Máximo tokens a generar
+            temperature: Temperatura (0.0-1.0). Si es None, usa default según tipo de modelo
+        """
         try:
             # Detectar si es modelo de chat y usar endpoint apropiado
             is_chat_model = "chat" in self.model or "qwen" in self.model.lower() or "llama" in self.model.lower()
             
+            # Usar temperatura proporcionada o defaults
+            if temperature is None:
+                temperature = 0.9 if is_chat_model else 0.2
+            
             if is_chat_model:
                 # Usar endpoint /api/chat para modelos conversacionales
                 api_url = f"{self.endpoint}/api/chat"
+                
+                # Detectar si es HTML para usar configuración optimizada (más rápida)
+                es_html = '<!DOCTYPE' in prompt or 'HTML' in prompt.upper()
+                
+                if es_html:
+                    # Configuración OPTIMIZADA para HTML: menos parámetros = más rápido
+                    options = {
+                        "num_predict": max_tokens,
+                        "temperature": temperature,
+                        "num_ctx": 4096  # Contexto reducido para velocidad
+                    }
+                else:
+                    # Configuración completa para código complejo
+                    options = {
+                        "num_predict": max_tokens,
+                        "temperature": temperature,
+                        "top_p": 0.9,
+                        "top_k": 40,
+                        "repeat_penalty": 1.1,
+                        "presence_penalty": 0.3,
+                        "frequency_penalty": 0.3,
+                        "num_ctx": 8192
+                    }
+                
                 payload = {
                     "model": self.model,
                     "messages": [
                         {"role": "user", "content": prompt}
                     ],
                     "stream": False,
-                    "options": {
-                        "num_predict": max_tokens,
-                        "temperature": 0.9,
-                        "top_p": 0.95,
-                        "top_k": 40,
-                        "repeat_penalty": 1.2,
-                        "presence_penalty": 0.5,
-                        "frequency_penalty": 0.5
-                    }
+                    "options": options
                 }
             else:
                 # Usar endpoint /api/generate para modelos de código
@@ -77,7 +104,7 @@ class OllamaProvider(BaseLLMProvider):
                     "stream": False,
                     "options": {
                         "num_predict": max_tokens,
-                        "temperature": 0.2,
+                        "temperature": temperature,
                         "top_p": 0.8,
                         "repeat_penalty": 1.1
                     }

@@ -38,6 +38,55 @@ def extraer_ruta_de_mensaje(mensaje: str) -> str:
 def detectar_intencion(mensaje: str) -> str:
     m = normalizar(mensaje)
 
+    # =========================
+    # DETECTOR SIMPLE DE CÓDIGO
+    # =========================
+    CODE_PATTERNS = [
+        "void main",
+        "print(",
+        "{",
+        "}",
+        ";",
+        "class ",
+        "def ",
+        "function ",
+        "import ",
+        "#include",
+    ]
+
+    def looks_like_code(text: str) -> bool:
+        text = text.strip()
+        matches = 0
+        for pattern in CODE_PATTERNS:
+            if pattern in text:
+                matches += 1
+        return matches >= 2
+
+    # =========================
+    # DETECTOR DE FIX REQUESTS
+    # =========================
+    FIX_WORDS = [
+        "fix this",
+        "corrige",
+        "arregla",
+        "repair",
+        "debug",
+    ]
+
+    def is_fix_request(text: str) -> bool:
+        lower = text.lower()
+        return any(word in lower for word in FIX_WORDS)
+
+    # =========================
+    # ROUTER - PRIORIDAD ALTA
+    # =========================
+    # Si parece código o es fix request → code_fix
+    if looks_like_code(mensaje):
+        return "code_fix"
+
+    if is_fix_request(mensaje):
+        return "code_fix"
+
     # Saludos
     if any(saludo in m for saludo in [
     # Español (formal e informal)
@@ -116,12 +165,19 @@ def detectar_intencion(mensaje: str) -> str:
     ]):
         return "analyze"
 
-    # Create - crear/generar
+    # Create - crear/generar código (detecta solicitudes implícitas)
     if m.startswith("/create") or any(frase in m for frase in [
         "crea", "crear", "genera", "generar", "haz una app",
         "build", "desarrolla", "desarrollar", "construye",
         "nuevo proyecto", "quiero hacer", "necesito crear",
-        "diseña", "diseñar"
+        "diseña", "diseñar",
+        # Solicitudes implícitas de código
+        "ayúdame a", "ayudame a", "ayuda con",
+        "quiero un", "necesito un", "busco un",
+        "cómo hago", "como hago", "cómo crear",
+        "código para", "codigo para", "programa para",
+        "función para", "funcion para", "clase para",
+        "app de", "aplicación de", "sistema de"
     ]):
         return "create"
 
@@ -139,6 +195,22 @@ def detectar_intencion(mensaje: str) -> str:
         "cómo se usa kalin", "instrucciones de uso"
     ]):
         return "help"
+
+    # Experience - mostrar experiencia/aprendizaje
+    if m.startswith("/experience") or any(frase in m for frase in [
+        "experiencia", "aprendizaje", "memoria de aprendizaje",
+        "estadísticas de uso", "qué has aprendido",
+        "resumen de experiencia", "learning"
+    ]):
+        return "experience"
+
+    # Learn - mostrar patrones aprendidos
+    if m.startswith("/learn") or any(frase in m for frase in [
+        "patrones", "qué patrones", "qué has detectado",
+        "insights", "recomendaciones",
+        "qué sabes de mi", "qué conoces"
+    ]):
+        return "learn"
 
     # LLM status
     if any(frase in m for frase in [
@@ -187,7 +259,7 @@ def planificar(contexto: Dict[str, Any]) -> Dict[str, Any]:
     intencion = contexto["intencion"]
     plan = {"accion": intencion, "pasos": []}
 
-    if intencion == "fix":
+    if intencion == "fix" or intencion == "code_fix":
         plan["pasos"] = ["leer_archivo", "analizar", "reparar"]
     elif intencion == "create":
         plan["pasos"] = ["generar_codigo"]
@@ -197,6 +269,8 @@ def planificar(contexto: Dict[str, Any]) -> Dict[str, Any]:
         plan["pasos"] = ["aplicar"]
     elif intencion == "analyze":
         plan["pasos"] = ["analizar"]
+    elif intencion == "show_code":
+        plan["pasos"] = ["mostrar_codigo"]
     elif intencion == "refactor":
         plan["pasos"] = ["analizar", "refactorizar"]
     elif intencion == "help":

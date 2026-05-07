@@ -1,8 +1,15 @@
-﻿from typing import Dict
+from typing import Dict
 from agent.llm.provider_manager import get_manager
 
 
 def generate(prompt: str, max_tokens: int = 300, use_case: str = "fix") -> str:
+    # LOG DEL PROMPT ANTES DE LLAMAR AL LLM
+    print("\n=== PROMPT START ===")
+    print(prompt)
+    print("=== PROMPT END ===")
+    print(f"Longitud: {len(prompt)} chars | use_case: {use_case} | max_tokens: {max_tokens}")
+    print("="*80 + "\n")
+    
     manager = get_manager()
     response = manager.generate(prompt, use_case=use_case, max_tokens=max_tokens)
     return response.text if response else ""

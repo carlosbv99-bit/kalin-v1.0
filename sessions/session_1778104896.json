@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778104896",
+  "messages": [
+    {
+      "role": "user",
+      "content": "void main() { print(\"Hola mundo\") }",
+      "timestamp": 1778104896.2102568,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Error: cannot access local variable 'mensaje' where it is not associated with a value",
+      "timestamp": 1778104896.215275,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T00:01:36.210257",
+    "last_activity": "2026-05-07T00:01:36.215275",
+    "message_count": 2
+  }
+}

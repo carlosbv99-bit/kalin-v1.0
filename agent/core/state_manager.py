@@ -1,4 +1,4 @@
-﻿"""
+"""
 Estado mínimo y persistente del agente.
 - Último archivo procesado
 - Ruta del proyecto
@@ -21,6 +21,7 @@ class StateManager:
             "ruta_proyecto": None,
             "ultimo_archivo": None,
             "ultimo_fix": None,
+            "ultimo_codigo_generado": None,  # Código generado por /create
             "estrategia_activa": "smart",  # smart, aggressive, conservative
             "contador_fallos": 0,
             "contador_exitos": 0,
@@ -105,6 +106,15 @@ class StateManager:
     def get_ultimo_archivo(self) -> Optional[Dict]:
         """Obtiene último archivo procesado"""
         return self.memory.get("ultimo_archivo")
+    
+    def set_ultimo_codigo_generado(self, codigo: str):
+        """Guarda el último código generado por /create"""
+        self.memory["ultimo_codigo_generado"] = codigo
+        self.guardar()
+    
+    def get_ultimo_codigo_generado(self) -> Optional[str]:
+        """Obtiene el último código generado"""
+        return self.memory.get("ultimo_codigo_generado")
     
     def get_stats(self) -> Dict[str, int]:
         """Obtiene estadísticas de éxitos y fallos"""

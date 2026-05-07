@@ -1,0 +1,36 @@
+{
+  "session_id": "session_1778103796",
+  "messages": [
+    {
+      "role": "user",
+      "content": "void main() { print(\"Hola mundo\") }",
+      "timestamp": 1778103796.211215,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❓ Acción no soportada",
+      "timestamp": 1778103796.213845,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "detect_intention() → \"code_fix\"",
+      "timestamp": 1778103902.578077,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Archivo no encontrado",
+      "timestamp": 1778103903.0298443,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-06T23:43:16.210157",
+    "last_activity": "2026-05-06T23:45:03.029844",
+    "message_count": 4
+  }
+}

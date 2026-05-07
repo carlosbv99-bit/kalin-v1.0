@@ -3,11 +3,13 @@ import os
 import random
 import time
 from agent.analyzer import analizar_codigo
-from agent.actions.tools.fix_tool import generar_codigo, reparar_codigo
+from agent.actions.tools.fix_tool import reparar_codigo
+from agent.actions.tools import fix_tool  # Para generar_codigo
 from agent.llm.client import is_available, get_provider_status
 from agent.core.state_manager import StateManager
 from agent.core.retry_engine import RetryEngine
 from agent.core.project_analyzer import ProjectAnalyzer
+from agent.core.experience_memory import get_experience_memory
 from agent.actions.strategies import PythonStrategy, ProjectStrategy
 from agent.core.logger import get_logger
 from agent.core.security import security_manager
@@ -18,6 +20,7 @@ class Executor:
     def __init__(self):
         self.state_manager = StateManager()
         self.retry_engine = RetryEngine()
+        self.experience_memory = get_experience_memory()
         self.project_analyzer = None
         self._strategies_cache = {}
 
@@ -149,14 +152,39 @@ class Executor:
             # Registra último archivo
             self.state_manager.set_ultimo_archivo(ruta, codigo)
             
+            # Consultar experiencia previa para mejor estrategia
+            file_type = os.path.splitext(ruta)[1].lstrip('.')
+            strategy_recommendation = self.experience_memory.get_best_strategy(
+                task_type='fix',
+                file_type=file_type,
+                problem_description=f"Fix errors in {os.path.basename(ruta)}"
+            )
+            
+            if strategy_recommendation:
+                logger.info(f"Experience recommendation: {strategy_recommendation['recommendation']}")
+            
             # Analizar y reparar
             logger.info(f"Analyzing file: {ruta}")
+            start_time = time.time()
             analisis = analizar_codigo(codigo)
             logger.debug(f"Analysis completed: {len(analisis)} chars")
             
             nuevo = reparar_codigo(codigo, analisis)
+            duration = time.time() - start_time
 
             if not nuevo:
+                # Registrar experiencia fallida
+                self.experience_memory.record_experience(
+                    task_type='fix',
+                    problem_description=f"Failed to fix {os.path.basename(ruta)}",
+                    file_type=file_type,
+                    strategy_used='default',
+                    success=False,
+                    confidence_score=0.0,
+                    duration_seconds=duration,
+                    error_message='No code generated'
+                )
+                
                 self.state_manager.registrar_fallo()
                 status = get_provider_status()
                 logger.error(f"Failed to generate code for {ruta}")
@@ -183,7 +211,19 @@ class Executor:
 
             self.state_manager.set_ultimo_fix(ruta, codigo, nuevo_limpio)
             
-            logger.info(f"Fix completed for {ruta}: valid={valido}, diff_length={len(diff)}")
+            # Registrar experiencia exitosa
+            self.experience_memory.record_experience(
+                task_type='fix',
+                problem_description=f"Fixed errors in {os.path.basename(ruta)}",
+                file_type=file_type,
+                strategy_used=strategy_recommendation['strategy'] if strategy_recommendation else 'default',
+                success=True,
+                confidence_score=0.8 if valido else 0.5,
+                duration_seconds=duration,
+                solution_summary=f"Applied fix to {os.path.basename(ruta)}"
+            )
+            
+            logger.info(f"Fix completed for {ruta}: valid={valido}, diff_length={len(diff)}, experience_recorded=True")
             
             return jsonify({
                 "respuesta": "⚠️ Modo seguro activo (usa /apply para aplicar cambios)",
@@ -258,11 +298,112 @@ class Executor:
                     "status": status
                 })
 
-            nuevo = generar_codigo(prompt)
+            # Detectar tipo de archivo/lenguaje solicitado
+            lenguajes_posibles = {
+                'python': 'py', 'py': 'py',
+                'javascript': 'js', 'js': 'js',
+                'typescript': 'ts', 'ts': 'ts',
+                'html': 'html', 'css': 'css',
+                'java': 'java', 'c++': 'cpp', 'cpp': 'cpp',
+                'c#': 'cs', 'csharp': 'cs',
+                'ruby': 'rb', 'go': 'go', 'rust': 'rs'
+            }
+            
+            file_type = 'py'  # default
+            prompt_lower = prompt.lower()
+            for key, value in lenguajes_posibles.items():
+                if key in prompt_lower:
+                    file_type = value
+                    break
+            
+            # Consultar experiencia previa
+            strategy_recommendation = self.experience_memory.get_best_strategy(
+                task_type='create',
+                file_type=file_type,
+                problem_description=prompt[:100]
+            )
+            
+            if strategy_recommendation:
+                logger.info(f"Experience recommendation for create: {strategy_recommendation['recommendation']}")
+            
+            start_time = time.time()
+            nuevo = fix_tool.generar_codigo(prompt)
+            duration = time.time() - start_time
+            
             if not nuevo:
+                # Registrar experiencia fallida
+                self.experience_memory.record_experience(
+                    task_type='create',
+                    problem_description=f"Failed to create code: {prompt[:100]}",
+                    file_type=file_type,
+                    strategy_used='default',
+                    success=False,
+                    confidence_score=0.0,
+                    duration_seconds=duration,
+                    error_message='No code generated'
+                )
+                
+                # Guardar memoria en disco inmediatamente
+                self.experience_memory.save()
+                
                 return jsonify({"respuesta": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.", "preview": ""})
 
-            return jsonify({"respuesta": "✅ Código generado", "preview": nuevo[:800]})
+            # Guardar el código generado en state_manager para poder mostrarlo después
+            self.state_manager.set_ultimo_codigo_generado(nuevo)
+            
+            # Registrar experiencia exitosa
+            self.experience_memory.record_experience(
+                task_type='create',
+                problem_description=f"Created {file_type} code: {prompt[:100]}",
+                file_type=file_type,
+                strategy_used=strategy_recommendation['strategy'] if strategy_recommendation else 'default',
+                success=True,
+                confidence_score=0.85,
+                duration_seconds=duration,
+                solution_summary=f"Generated {len(nuevo)} chars of {file_type} code"
+            )
+            
+            # Guardar memoria en disco inmediatamente
+            self.experience_memory.save()
+            
+            logger.info(f"Create completed: type={file_type}, length={len(nuevo)}, experience_recorded=True")
+            
+            # Mostrar el CÓDIGO FUENTE automáticamente (no compilado)
+            lenguaje_display = file_type.upper() if len(file_type) <= 3 else file_type.capitalize()
+            respuesta = f"✅ Código {lenguaje_display} generado exitosamente:\n\n```{file_type}\n{nuevo}\n```"
+            
+            return jsonify({"respuesta": respuesta, "preview": nuevo[:800]})
+
+        if intencion == "show_code":
+            # Mostrar último código generado
+            codigo = self.state_manager.get_ultimo_codigo_generado()
+            if not codigo:
+                return jsonify({"respuesta": "❌ No hay código generado recientemente. Usa /create para generar código."})
+            
+            # Detectar si el usuario quiere el código sin comentarios
+            mensaje = contexto.get("mensaje", "").lower()
+            sin_comentarios = any(frase in mensaje for frase in [
+                "sin comentarios", "quitar comentarios", "eliminar comentarios",
+                "no comentarios", "solo código", "solo codigo"
+            ])
+            
+            if sin_comentarios:
+                # Eliminar comentarios del código
+                import re
+                lineas = codigo.split('\n')
+                lineas_sin_comentarios = []
+                for linea in lineas:
+                    # Eliminar comentarios de línea (# ...)
+                    linea_limpia = re.sub(r'#.*$', '', linea).rstrip()
+                    if linea_limpia:  # Solo agregar líneas no vacías
+                        lineas_sin_comentarios.append(linea_limpia)
+                codigo_mostrar = '\n'.join(lineas_sin_comentarios)
+                respuesta = f"📄 **Código limpio (sin comentarios):**\n\n```python\n{codigo_mostrar}\n```"
+            else:
+                # Mostrar código formateado con mensaje útil
+                respuesta = f"📄 **Código generado:**\n\n```python\n{codigo}\n```\n\n💡 Código listo para copiar y usar. ¿Necesitas que lo guarde en un archivo o que modifique algo?"
+            
+            return jsonify({"respuesta": respuesta})
 
         if intencion == "refactor":
             nombre = args.get("arg")
@@ -311,8 +452,184 @@ class Executor:
         if intencion == "help":
             logger.info("Help command executed")
             return jsonify({
-                "respuesta": "Comandos disponibles: /setpath <ruta>, /scan, /fix <archivo>, /apply, /analyze <archivo>, /create <requerimiento>, /refactor <archivo>"
+                "respuesta": "Comandos disponibles: /setpath <ruta>, /scan, /fix <archivo>, /apply, /analyze <archivo>, /create <requerimiento>, /refactor <archivo>, /experience, /learn"
             })
+
+        if intencion == "experience" or (intencion == "chat" and any(word in contexto.get("mensaje", "").lower() for word in ["experiencia", "aprendizaje", "memoria", "estadísticas"])):
+            # Mostrar resumen de experiencia
+            summary = self.experience_memory.get_learning_summary()
+            
+            respuesta = f"🧠 **Memoria de Aprendizaje**\n\n"
+            respuesta += f"📊 Experiencias totales: {summary['total_experiences']}\n"
+            respuesta += f"✅ Éxitos: {summary['total_successes']}\n"
+            respuesta += f"❌ Fallos: {summary['total_failures']}\n"
+            respuesta += f"📈 Tasa de éxito global: {summary['overall_success_rate']:.1%}\n\n"
+            
+            if summary['success_rate_by_type']:
+                respuesta += "🎯 Por tipo de tarea:\n"
+                for task_type, stats in summary['success_rate_by_type'].items():
+                    respuesta += f"• {task_type}: {stats.get('rate', 0):.1%} éxito ({stats.get('total', 0)} intentos)\n"
+                respuesta += "\n"
+            
+            if summary['patterns_detected'] > 0:
+                respuesta += f"🔍 Patrones detectados: {summary['patterns_detected']}\n\n"
+            
+            if summary['top_insights']:
+                respuesta += "💡 Insights:\n"
+                for insight in summary['top_insights'][:3]:
+                    respuesta += f"• {insight['message']}\n"
+                respuesta += "\n"
+            
+            if summary['recommendations']:
+                respuesta += "📝 Recomendaciones:\n"
+                for rec in summary['recommendations'][:2]:
+                    respuesta += f"• {rec}\n"
+            
+            return jsonify({"respuesta": respuesta})
+
+        if intencion == "learn" or (intencion == "chat" and any(word in contexto.get("mensaje", "").lower() for word in ["patrones", "qué has aprendido", "qué sabes"])):
+            # Mostrar patrones aprendidos
+            patterns = self.experience_memory.get_patterns()
+            
+            if not patterns:
+                return jsonify({
+                    "respuesta": "🧠 Aún no he detectado patrones. Sigue usando Kalin para que pueda aprender de la experiencia."
+                })
+            
+            respuesta = f"🔍 **Patrones Aprendidos** ({len(patterns)})\n\n"
+            
+            for i, pattern in enumerate(patterns[:5], 1):
+                respuesta += f"{i}. {pattern.description}\n"
+                respuesta += f"   Frecuencia: {pattern.frequency} veces\n"
+                respuesta += f"   Éxito: {pattern.success_rate:.1%}\n"
+                respuesta += f"   💡 {pattern.recommended_action}\n\n"
+            
+            if len(patterns) > 5:
+                respuesta += f"...y {len(patterns) - 5} patrones más\n"
+            
+            return jsonify({"respuesta": respuesta})
+
+        if intencion == "export_experience" or (intencion == "chat" and any(word in contexto.get("mensaje", "").lower() for word in ["exportar experiencia", "exportar memoria", "compartir aprendizaje"])):
+            # Exportar experiencias a archivo JSON
+            import json
+            from datetime import datetime
+            
+            try:
+                # Crear paquete de exportación
+                export_data = {
+                    'version': '1.0',
+                    'exported_at': datetime.now().isoformat(),
+                    'experiences': [exp.to_dict() for exp in self.experience_memory.experiences],
+                    'patterns': {k: v.to_dict() for k, v in self.experience_memory.patterns.items()},
+                    'statistics': self.experience_memory.statistics
+                }
+                
+                # Guardar en archivo con timestamp
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"kalin_experience_{timestamp}.json"
+                filepath = os.path.join(os.getcwd(), filename)
+                
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(export_data, f, indent=2, ensure_ascii=False)
+                
+                num_experiences = len(export_data['experiences'])
+                num_patterns = len(export_data['patterns'])
+                
+                respuesta = f"📦 **Experiencia exportada exitosamente**\n\n"
+                respuesta += f"📄 Archivo: `{filename}`\n"
+                respuesta += f"📍 Ubicación: `{filepath}`\n\n"
+                respuesta += f"📊 Contenido:\n"
+                respuesta += f"• {num_experiences} experiencias\n"
+                respuesta += f"• {num_patterns} patrones aprendidos\n\n"
+                respuesta += f"💡 Comparte este archivo con otros usuarios de Kalin para que puedan importar tu experiencia."
+                
+                logger.info(f"Experience exported to {filepath}")
+                return jsonify({"respuesta": respuesta})
+            
+            except Exception as e:
+                logger.error(f"Error exporting experience: {e}")
+                return jsonify({"respuesta": f"❌ Error al exportar: {str(e)}"})
+
+        if intencion == "import_experience" or (intencion == "chat" and any(word in contexto.get("mensaje", "").lower() for word in ["importar experiencia", "importar memoria", "cargar aprendizaje"])):
+            # Importar experiencias desde archivo JSON
+            import json
+            
+            try:
+                # Buscar archivo en el mensaje o usar el más reciente
+                mensaje = contexto.get("mensaje", "")
+                
+                # Extraer ruta del archivo si se proporcionó
+                import re
+                match = re.search(r'[E-Z]:\\[\w\\ ]+\.json', mensaje, re.IGNORECASE)
+                if match:
+                    filepath = match.group(0)
+                else:
+                    # Buscar el archivo más reciente en el directorio actual
+                    import glob
+                    files = glob.glob("kalin_experience_*.json")
+                    if not files:
+                        return jsonify({"respuesta": "❌ No se encontró archivo de experiencia. Usa: importar experiencia E:\\ruta\\archivo.json"})
+                    
+                    # Usar el archivo más reciente
+                    filepath = max(files, key=os.path.getctime)
+                
+                if not os.path.exists(filepath):
+                    return jsonify({"respuesta": f"❌ Archivo no encontrado: {filepath}"})
+                
+                # Cargar datos
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    import_data = json.load(f)
+                
+                # Validar estructura
+                if 'experiences' not in import_data:
+                    return jsonify({"respuesta": "❌ Archivo inválido: no contiene experiencias"})
+                
+                # Contar experiencias actuales
+                current_count = len(self.experience_memory.experiences)
+                
+                # Importar experiencias (evitar duplicados por ID)
+                existing_ids = {exp.experience_id for exp in self.experience_memory.experiences}
+                new_count = 0
+                
+                from agent.core.experience_memory import Experience
+                for exp_data in import_data['experiences']:
+                    if exp_data.get('experience_id') not in existing_ids:
+                        try:
+                            exp = Experience.from_dict(exp_data)
+                            self.experience_memory.experiences.append(exp)
+                            existing_ids.add(exp.experience_id)
+                            new_count += 1
+                        except Exception as e:
+                            logger.warning(f"Error importing experience: {e}")
+                
+                # Actualizar índices
+                self.experience_memory._rebuild_indices()
+                
+                # Guardar memoria actualizada
+                self.experience_memory.save()
+                
+                total_count = len(self.experience_memory.experiences)
+                
+                respuesta = f"✅ **Experiencia importada exitosamente**\n\n"
+                respuesta += f"📄 Archivo: `{os.path.basename(filepath)}`\n\n"
+                respuesta += f"📊 Resultados:\n"
+                respuesta += f"• {new_count} experiencias nuevas importadas\n"
+                respuesta += f"• {current_count} experiencias previas\n"
+                respuesta += f"• {total_count} experiencias totales\n\n"
+                
+                if new_count > 0:
+                    respuesta += f"🧠 Kalin ahora es más inteligente con {new_count} nuevas experiencias aprendidas."
+                else:
+                    respuesta += f"ℹ️  Todas las experiencias ya estaban en la memoria (sin duplicados)."
+                
+                logger.info(f"Experience imported: {new_count} new experiences from {filepath}")
+                return jsonify({"respuesta": respuesta})
+            
+            except Exception as e:
+                logger.error(f"Error importing experience: {e}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({"respuesta": f"❌ Error al importar: {str(e)}"})
 
         if intencion == "greeting" or intencion == "chat":
             from agent.llm.client import generate
@@ -417,56 +734,17 @@ Tu respuesta:"""
                     try:
                         # Intentar generar código (SOLO 1 intento para velocidad)
                         print(f"⚙️ Generando código con DeepSeek...")
-                        codigo_generado = generar_codigo(requerimiento, max_intentos=1)
+                        codigo_generado = generar_codigo(requerimiento, max_intentos=3)  # Aumentar a 3 intentos
                         
                         print(f"🔍 DEBUG - Código generado: {len(codigo_generado) if codigo_generado else 0} chars")
                         
                         if codigo_generado and len(codigo_generado) > 20:
-                            # VALIDAR calidad del código con Llama
-                            print(f"✅ Código generado, validando calidad...")
-                            
-                            prompt_validacion = f"""Eres un supervisor de calidad de código.
-
-Evalúa este código y determina si es ACEPTABLE para mostrar al usuario:
-
-CÓDIGO:
-{codigo_generado[:500]}
-
-CRITERIOS MÍNIMOS:
-- Contiene código válido (import/def/class/etc)
-- No está completamente vacío
-- Tiene estructura lógica básica
-
-IGNORA:
-- Comentarios explicativos menores
-- Texto introductorio breve
-- Formato imperfecto
-
-Responde SOLO "APROBADO" si el código es usable, o "RECHAZADO" si está completamente mal."""
-                            
-                            validacion = generate_llm(prompt_validacion, max_tokens=20, use_case="chat")
-                            
-                            # DEBUG: Mostrar respuesta completa de validación
-                            print(f"🔍 DEBUG - Respuesta de validación: '{validacion}'")
-                            print(f"🔍 DEBUG - Longitud: {len(validacion) if validacion else 0} chars")
-                            
-                            if validacion and len(validacion.strip()) > 0:
-                                validacion_upper = validacion.upper().strip()
-                                print(f"🔍 DEBUG - Validación normalizada: '{validacion_upper}'")
-                                
-                                # Verificar si contiene APROBADO (más flexible)
-                                if "APROBADO" in validacion_upper or "ACEPTADO" in validacion_upper or "OK" in validacion_upper:
-                                    print(f"✅ Código APROBADO")
-                                    respuesta_ia = f"```\n{codigo_generado}\n```"
-                                else:
-                                    print(f"❌ Código RECHAZADO - Razón: {validacion}")
-                                    respuesta_ia = "El código generado no cumple los estándares de calidad. ¿Puedes especificar mejor qué necesitas?"
-                            else:
-                                print(f"❌ Validación fallida - respuesta vacía o None")
-                                respuesta_ia = "Error al validar el código generado."
+                            # La validación ya se hizo en generar_codigo() con _es_codigo_de_calidad()
+                            print(f"✅ Código generado y validado correctamente")
+                            respuesta_ia = f"```python\n{codigo_generado}\n```"
                         else:
                             print(f"❌ Código NO generado o muy corto")
-                            respuesta_ia = "No pude generar código. ¿Puedes ser más específico?"
+                            respuesta_ia = "No pude generar código válido después de varios intentos. ¿Puedes ser más específico?"
                         
                     except Exception as e:
                         print(f"❌ ERROR en generación/validación: {str(e)}")
@@ -486,6 +764,13 @@ Responde SOLO "APROBADO" si el código es usable, o "RECHAZADO" si está complet
                 return jsonify({
                     "respuesta": f"❌ Error al procesar: {str(e)}"
                 })
+
+        # =========================
+        # CODE_FIX - Fix automático de código
+        # =========================
+        elif intencion == "code_fix":
+            mensaje_usuario = contexto.get("mensaje", "")
+            return self.fix_code(mensaje_usuario)
 
 
         return jsonify({"respuesta": "❓ Acción no soportada"})
@@ -524,3 +809,33 @@ Responde SOLO "APROBADO" si el código es usable, o "RECHAZADO" si está complet
         }
 
         return tipos.get(ext, "unknown")
+
+    def fix_code(self, message: str):
+        """Fix code - versión mínima temporal"""
+        from agent.llm.client import generate as generate_llm
+        
+        prompt = f"""
+Fix this Dart code.
+
+RULES:
+- Return ONLY code
+- Do not use markdown
+- Preserve original structure
+- Preserve original strings
+- Fix only syntax/errors
+
+CODE:
+{message}
+"""
+
+        print("\n=== FIX PROMPT START ===\n")
+        print(prompt)
+        print("\n=== FIX PROMPT END ===\n")
+
+        response = generate_llm(prompt, max_tokens=2000, use_case="fix")
+        
+        print("\n=== FIX RESPONSE START ===\n")
+        print(response[:500] if response else "EMPTY")
+        print("\n=== FIX RESPONSE END ===\n")
+
+        return jsonify({"respuesta": response})

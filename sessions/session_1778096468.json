@@ -1,0 +1,36 @@
+{
+  "session_id": "session_1778096468",
+  "messages": [
+    {
+      "role": "user",
+      "content": "/setpath E:/tu/proyecto/flutter",
+      "timestamp": 1778096468.2911012,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Ruta no válida: E:\\tu\\proyecto\\flutter\n\nAsegúrate de que la carpeta exista.",
+      "timestamp": 1778096468.2911012,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "/fix main.dart",
+      "timestamp": 1778096735.342806,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Archivo no encontrado",
+      "timestamp": 1778096735.4347785,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-06T21:41:08.291101",
+    "last_activity": "2026-05-06T21:45:35.434778",
+    "message_count": 4
+  }
+}

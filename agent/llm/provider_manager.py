@@ -1,14 +1,104 @@
 """
 Manager de proveedores LLM.
 Gestiona múltiples proveedores, fallbacks, routing, costos.
++ CONTROL DE OUTPUT (validación + limpieza + retry)
 """
 
+import os
+import re
 from typing import Optional, List, Dict
 from agent.llm.config import LLMConfig, ProviderType
 from agent.llm.providers.base_provider import LLMResponse
 from agent.llm.providers.ollama_provider import OllamaProvider
 from agent.llm.providers.openai_provider import OpenAIProvider
 from agent.llm.providers.anthropic_provider import AnthropicProvider
+
+DEBUG_MODE = os.getenv("KALIN_DEBUG", "0").lower() in ["1", "true", "yes"]
+
+# =========================
+# PROMPTS CONTROLADOS
+# =========================
+
+SYSTEM_CODE = """
+Eres un generador de código profesional.
+
+REGLAS:
+- SOLO código
+- NO markdown
+- NO explicaciones
+- NO texto fuera del código
+- NO uses ```
+"""
+
+SYSTEM_CHAT = """
+Eres un asistente útil. Responde claro y breve.
+"""
+
+# =========================
+# VALIDACIÓN
+# =========================
+
+def is_valid_code(output: str) -> bool:
+    # Validación minimalista temporal
+    if not output.strip():
+        return False
+
+    return True
+
+
+def clean_llm_output(text: str) -> str:
+    if not text:
+        return ""
+
+    text = text.strip()
+
+    # remove markdown fences
+    text = re.sub(r"^```[\w]*\n?", "", text)
+    text = re.sub(r"\n?```$", "", text)
+
+    # remove accidental assistant artifacts
+    garbage_lines = [
+        "obj['response']",
+        'obj["response"]',
+    ]
+
+    lines = []
+
+    for line in text.splitlines():
+        clean = line.strip()
+
+        if clean in garbage_lines:
+            continue
+
+        lines.append(line)
+
+    return "\n".join(lines).strip()
+
+
+# COMENTADO - CLEANER AGRESIVO DESACTIVADO
+# def clean_code_response(text: str) -> str:
+#     if not text:
+#         return ""
+#
+#     # quitar markdown
+#     text = text.replace("```dart", "")
+#     text = text.replace("```", "")
+#
+#     # quitar explicaciones comunes
+#     lines = text.splitlines()
+#
+#     cleaned = []
+#     for line in lines:
+#         if any(x in line.lower() for x in [
+#             "aquí tienes",
+#             "he corregido",
+#             "explicación",
+#             "este código",
+#         ]):
+#             continue
+#         cleaned.append(line)
+#
+#     return "\n".join(cleaned).strip()
 
 
 class LLMProviderManager:
@@ -26,10 +116,8 @@ class LLMProviderManager:
         }
 
     def _initialize_providers(self):
-        """Inicializa los proveedores disponibles"""
         provider_classes = {
             ProviderType.OLLAMA: OllamaProvider,
-            ProviderType.OLLAMA_CHAT: OllamaProvider,  # Usa la misma clase pero diferente modelo
             ProviderType.OPENAI: OpenAIProvider,
             ProviderType.ANTHROPIC: AnthropicProvider,
         }
@@ -47,100 +135,123 @@ class LLMProviderManager:
         use_case: str = "fix",
         max_tokens: Optional[int] = None
     ) -> Optional[LLMResponse]:
-        """
-        Genera respuesta usando routing inteligente + fallbacks.
 
-        Estrategia:
-        1. Selecciona proveedor según tipo de tarea (chat vs código)
-        2. Intenta proveedor primario para el use_case
-        3. Si falla: intenta fallbacks en orden
-        4. Si todo falla: retorna None
+        selected_provider = self.config.get_primary_provider(use_case)
 
-        Args:
-            prompt: Texto a procesar
-            use_case: "fix", "create", "enhance", "design", "chat", etc.
-            max_tokens: Máximo tokens (o usa default del use_case)
-
-        Returns:
-            LLMResponse o None si falla todo
-        """
-
-        # ROUTING INTELIGENTE: Seleccionar modelo según tipo de tarea
-        if use_case in ["chat", "greeting", "help"]:
-            # Para conversaciones, usar SOLO modelo especializado en chat
-            # NO permitir fallback a modelos de código
-            selected_provider = ProviderType.OLLAMA_CHAT
-            allow_fallback = False  # CRÍTICO: No hacer fallback para chat
-        else:
-            # Para código, usar modelo especializado en código
-            selected_provider = self.config.get_primary_provider(use_case)
-            allow_fallback = True  # Permitir fallback para tareas técnicas
-
-        # Obtén configuración para este use_case
         if use_case not in self.config.USE_CASE_ROUTER:
-            use_case = "fix"  # Default
+            use_case = "fix"
 
         route = self.config.USE_CASE_ROUTER[use_case]
-        
-        if allow_fallback:
-            # Para código: intentar otros proveedores si falla el principal
-            fallback_providers = [
-                p for p in self.config.get_fallback_order()
-                if p != selected_provider
-            ]
-        else:
-            # Para chat: NO fallback, solo usar OLLAMA_CHAT
-            fallback_providers = []
+
+        fallback_providers = [
+            p for p in self.config.get_fallback_order()
+            if p != selected_provider
+        ]
 
         if max_tokens is None:
             max_tokens = route.get("max_tokens", 1200)
 
-        # Construye lista de proveedores a intentar
+        temperature = route.get("temperature", 0.2)
+
         providers_to_try = [selected_provider] + fallback_providers
 
         self.stats["total_requests"] += 1
 
-        # Intenta cada proveedor
-        for provider_type in providers_to_try:
-            if provider_type not in self.providers:
-                continue
+        # =========================
+        # SELECCIÓN DE MODO
+        # =========================
 
-            provider = self.providers[provider_type]
+        is_code_task = use_case not in ["chat", "help", "greeting"]
 
-            # Verifica disponibilidad
-            if not provider.is_available():
-                self._record_error(provider_type, "not_available")
-                print(f"⚠️ Provider {provider_type.value} no disponible")
-                continue
+        system_prompt = SYSTEM_CODE if is_code_task else SYSTEM_CHAT
 
-            # DEBUG: Mostrar qué modelo se está usando
-            if use_case in ["chat", "greeting", "help"]:
-                print(f"💬 CHAT: Usando {provider_type.value} ({provider.model})")
-            else:
-                print(f"⚙️ CÓDIGO: Usando {provider_type.value} ({provider.model})")
+        full_prompt = f"{system_prompt}\n\n{prompt}"
 
-            # Intenta generar
-            try:
-                response = provider.generate(prompt, max_tokens)
+        # =========================
+        # RETRY LOOP 🔥
+        # =========================
 
-                if response:
-                    # Éxito - registra estadísticas
+        for attempt in range(3):
+
+            for provider_type in providers_to_try:
+                if provider_type not in self.providers:
+                    continue
+
+                provider = self.providers[provider_type]
+
+                if not provider.is_available():
+                    self._record_error(provider_type, "not_available")
+                    continue
+
+                print(f"🤖 {provider_type.value} intento {attempt+1}")
+
+                # LOG DEL PROMPT REAL QUE VA AL MODELO
+                print("\n=== PROMPT START ===")
+                print(full_prompt)
+                print("=== PROMPT END ===")
+                print(f"Longitud: {len(full_prompt)} chars | Tokens estimados: ~{len(full_prompt)//4}")
+                print("="*80 + "\n")
+
+                try:
+                    response = provider.generate(full_prompt, max_tokens, temperature)
+
+                    if not response or not response.text:
+                        continue
+
+                    raw = response.text.strip()
+
+                    # LIMPIAR markdown ANTES de validar
+                    cleaned = clean_llm_output(raw)
+
+                    # LOG DE LA RESPUESTA RAW DEL MODELO
+                    print("\n=== RAW MODEL RESPONSE START ===")
+                    print(f"Longitud: {len(raw)} chars")
+                    print(raw[:1000])
+                    if len(raw) > 1000:
+                        print(f"... ({len(raw) - 1000} chars más)")
+                    print("=== RAW MODEL RESPONSE END ===")
+                    print("="*80 + "\n")
+
+                    # =========================
+                    # VALIDACIÓN SOLO PARA CÓDIGO
+                    # =========================
+
+                    if is_code_task:
+                        if not is_valid_code(cleaned):
+                            print("❌ Output inválido, reintentando...")
+
+                            full_prompt = f"""
+Tu respuesta anterior fue inválida.
+
+REGLAS:
+- SOLO código
+- SIN markdown
+- SIN explicaciones
+
+Reintenta:
+
+{prompt}
+"""
+                            continue
+
+                        # COMENTADO - CLEANER AGRESIVO DESACTIVADO
+                        # response.text = clean_code_response(cleaned)
+                        # response.text = clean_code_response(response.text)
+                        response.text = cleaned
+
+                    # éxito
                     self._record_success(provider_type, response)
                     return response
-                else:
-                    self._record_error(provider_type, "generation_failed")
-                    print(f"❌ {provider_type.value} falló en generar respuesta")
 
-            except Exception as e:
-                self._record_error(provider_type, str(e))
-                print(f"❌ Error en {provider_type.value}: {e}")
-                continue
+                except Exception as e:
+                    self._record_error(provider_type, str(e))
+                    print(f"❌ Error: {e}")
+                    continue
 
-        # Si llegamos aquí, todos fallaron
+        print("💥 Todos los intentos fallaron")
         return None
 
     def _record_success(self, provider_type: ProviderType, response: LLMResponse):
-        """Registra una generación exitosa"""
         if provider_type not in self.stats["provider_usage"]:
             self.stats["provider_usage"][provider_type.value] = 0
 
@@ -148,14 +259,12 @@ class LLMProviderManager:
         self.stats["total_cost"] += response.cost
 
     def _record_error(self, provider_type: ProviderType, error: str):
-        """Registra un error"""
         key = provider_type.value
         if key not in self.stats["errors"]:
             self.stats["errors"][key] = []
         self.stats["errors"][key].append(error)
 
     def get_stats(self) -> Dict:
-        """Retorna estadísticas de uso (para billing/debug)"""
         return {
             "total_requests": self.stats["total_requests"],
             "total_cost": f"${self.stats['total_cost']:.4f}",
@@ -165,18 +274,15 @@ class LLMProviderManager:
         }
 
     def get_provider_status(self) -> Dict[str, bool]:
-        """Retorna estado de cada proveedor"""
         return {
             provider_type.value: provider.is_available()
             for provider_type, provider in self.providers.items()
         }
 
 
-# Instancia global
 _manager = None
 
 def get_manager() -> LLMProviderManager:
-    """Obtiene la instancia global del manager"""
     global _manager
     if _manager is None:
         _manager = LLMProviderManager()

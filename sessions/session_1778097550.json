@@ -1,0 +1,48 @@
+{
+  "session_id": "session_1778097550",
+  "messages": [
+    {
+      "role": "user",
+      "content": "di hola",
+      "timestamp": 1778097550.0619028,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola, ¿qué estás construyendo hoy? (2 segundos)",
+      "timestamp": 1778097558.8853893,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "/fix main.dart",
+      "timestamp": 1778097674.883709,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Archivo no encontrado",
+      "timestamp": 1778097674.9963267,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "/fix main.dart",
+      "timestamp": 1778098369.5919154,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ No se pudo generar código. Verifica el proveedor LLM configurado.",
+      "timestamp": 1778098395.2674682,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-06T21:59:10.061902",
+    "last_activity": "2026-05-06T22:13:15.267468",
+    "message_count": 6
+  }
+}

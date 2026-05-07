@@ -30,21 +30,60 @@
       }
 
       .logo {
-        width: 32px;
-        height: 32px;
-        background: #10a37f;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        font-weight: bold;
+        overflow: hidden;
+      }
+
+      .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
       }
 
       .chat-area {
         flex: 1;
         overflow-y: auto;
         padding: 20px;
+        position: relative;
+      }
+
+      /* Pantalla de bienvenida con logo */
+      .welcome-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s ease;
+        z-index: 10;
+      }
+
+      .welcome-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .welcome-logo {
+        width: 70%;
+        max-width: 500px;
+        height: auto;
+        margin-bottom: 40px;
+        opacity: 0.15;
+      }
+
+      .welcome-text {
+        font-size: 24px;
+        color: #6e6e80;
+        text-align: center;
       }
 
       .messages-container {
@@ -71,6 +110,29 @@
       .message.bot {
         background: #ffffff;
         align-self: flex-start;
+      }
+
+      /* Estilo para bloques de código */
+      .message pre {
+        background: #f6f8fa;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 10px 0;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .message code {
+        background: #f6f8fa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
       }
 
       .input-container {
@@ -127,16 +189,410 @@
         background: transparent;
         color: #6e6e80;
       }
+
+      /* Botón del menú */
+      .menu-toggle {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid #e5e5e5;
+        background: #ffffff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        z-index: 100;
+        transition: all 0.3s ease;
+      }
+
+      .menu-toggle:hover {
+        background: #f3f3f3;
+      }
+
+      /* Menú lateral */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -320px;
+        width: 320px;
+        height: 100vh;
+        background: #ffffff;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+        z-index: 99;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        padding: 20px;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e5e5e5;
+      }
+
+      .sidebar-title {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .sidebar-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6e6e80;
+      }
+
+      .sidebar-close:hover {
+        background: #f3f3f3;
+      }
+
+      .sidebar-section {
+        margin-bottom: 24px;
+      }
+
+      .sidebar-section-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #6e6e80;
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+
+      .sidebar-btn {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 14px;
+        text-align: left;
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sidebar-btn:hover {
+        background: #f3f3f3;
+        border-color: #d0d0d0;
+      }
+
+      .sidebar-btn-icon {
+        font-size: 18px;
+      }
+
+      .sidebar-info {
+        background: #f9f9f9;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #6e6e80;
+        margin-top: 8px;
+      }
+
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 98;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+
+      .overlay.show {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      /* Modal de selección de modelos */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-overlay.show {
+        display: flex;
+      }
+
+      .modal {
+        background: #ffffff;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e5e5e5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 20px;
+        color: #6e6e80;
+      }
+
+      .modal-close:hover {
+        background: #f3f3f3;
+      }
+
+      .modal-body {
+        padding: 20px;
+      }
+
+      .model-category {
+        margin-bottom: 20px;
+      }
+
+      .model-category-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #6e6e80;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+
+      .model-item {
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .model-item:hover {
+        background: #f9f9f9;
+        border-color: #d0d0d0;
+      }
+
+      .model-item.selected {
+        background: #f0f7ff;
+        border-color: #0066ff;
+      }
+
+      .model-name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+
+      .model-size {
+        font-size: 12px;
+        color: #6e6e80;
+        margin-bottom: 6px;
+      }
+
+      .model-description {
+        font-size: 13px;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .model-use-case {
+        font-size: 12px;
+        color: #6e6e80;
+        font-style: italic;
+      }
+
+      .modal-footer {
+        padding: 16px 20px;
+        border-top: 1px solid #e5e5e5;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid #e5e5e5;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+
+      .modal-btn:hover {
+        background: #f3f3f3;
+      }
+
+      .modal-btn-primary {
+        background: #000000;
+        color: #ffffff;
+        border-color: #000000;
+      }
+
+      .modal-btn-primary:hover {
+        background: #333333;
+      }
+
+      .modal-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     </style>
   </head>
 
   <body>
+    <!-- Botón del menú -->
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Menú lateral -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">🧠 Memoria de Kalin</span>
+        <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Experiencias</div>
+        
+        <button class="sidebar-btn" onclick="exportExperience()">
+          <span class="sidebar-btn-icon">📦</span>
+          <span>Exportar Experiencia</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Guarda tu experiencia acumulada en un archivo JSON para compartirla con otros usuarios.
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Importar</div>
+        
+        <button class="sidebar-btn" onclick="importExperience()">
+          <span class="sidebar-btn-icon">📥</span>
+          <span>Importar Experiencia</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Carga experiencias de otros usuarios para que Kalin aprenda más rápido.
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Información</div>
+        
+        <div class="sidebar-info">
+          <strong>¿Qué es la memoria?</strong><br>
+          Kalin registra cada generación de código y aprende patrones para mejorar su rendimiento. Puedes compartir este conocimiento con otros usuarios.
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Instalación</div>
+        
+        <button class="sidebar-btn" onclick="checkDependencies()">
+          <span class="sidebar-btn-icon">🔍</span>
+          <span>Verificar Dependencias</span>
+        </button>
+        
+        <button class="sidebar-btn" onclick="createVenv()">
+          <span class="sidebar-btn-icon">📦</span>
+          <span>Crear Entorno Virtual</span>
+        </button>
+        
+        <button class="sidebar-btn" onclick="installDependencies()">
+          <span class="sidebar-btn-icon">⚙️</span>
+          <span>Instalar Dependencias</span>
+        </button>
+        
+        <button class="sidebar-btn" onclick="downloadModels()">
+          <span class="sidebar-btn-icon">📥</span>
+          <span>Descargar Modelos IA</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Automatiza la configuración completa: entorno virtual, packages y modelos Ollama.
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de selección de modelos -->
+    <div class="modal-overlay" id="model-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">📥 Seleccionar Modelos de IA</span>
+          <button class="modal-close" onclick="closeModelModal()">×</button>
+        </div>
+        <div class="modal-body" id="model-list">
+          <!-- Los modelos se cargarán dinámicamente aquí -->
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn" onclick="closeModelModal()">Cancelar</button>
+          <button class="modal-btn modal-btn-primary" id="download-selected-btn" onclick="confirmDownloadModels()" disabled>
+            Descargar Seleccionados
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="header">
-      <div class="logo">K</div>
-      <span style="font-weight: 600">Kalin</span>
+      <span style="font-weight: 600; margin-left: 52px;">Kalin v1.0</span>
     </div>
 
     <div class="chat-area" id="chat-area">
+      <!-- Pantalla de bienvenida -->
+      <div class="welcome-screen" id="welcome-screen">
+        <img src="/static/logo.png" alt="Kalin Logo" class="welcome-logo" 
+             onerror="this.style.display='none';">
+        <div class="welcome-text">¿En qué puedo ayudarte hoy?</div>
+      </div>
+      
       <div class="messages-container" id="messages"></div>
     </div>
 
@@ -208,6 +664,9 @@
           return;
         }
 
+        // Ocultar pantalla de bienvenida al primer mensaje
+        hideWelcomeScreen();
+
         addMessage(message, "user");
         input.value = "";
         updateButton();
@@ -236,7 +695,15 @@
         var container = document.getElementById("messages");
         var div = document.createElement("div");
         div.className = "message " + sender;
-        div.textContent = text;
+        
+        // Convertir markdown básico a HTML
+        var html = text
+          .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, '<br>');
+        
+        div.innerHTML = html;
         container.appendChild(div);
 
         var chatArea = document.getElementById("chat-area");
@@ -279,6 +746,377 @@
         btn.style.background = "transparent";
         btn.style.color = "#6e6e80";
         btn.innerHTML = "🎤";
+      }
+
+      function hideWelcomeScreen() {
+        var welcome = document.getElementById("welcome-screen");
+        if (welcome && !welcome.classList.contains("hidden")) {
+          welcome.classList.add("hidden");
+        }
+      }
+
+      // Funciones del menú lateral
+      function toggleSidebar() {
+        var sidebar = document.getElementById("sidebar");
+        var overlay = document.getElementById("overlay");
+        sidebar.classList.toggle("open");
+        overlay.classList.toggle("show");
+      }
+
+      function exportExperience() {
+        // Cerrar el menú
+        toggleSidebar();
+        
+        // Enviar mensaje al backend
+        var input = document.getElementById("input");
+        input.value = "exportar experiencia";
+        sendMessage();
+      }
+
+      function importExperience() {
+        // Cerrar el menú
+        toggleSidebar();
+        
+        // Mostrar diálogo para seleccionar archivo
+        var filePath = prompt("Ingresa la ruta del archivo de experiencia:\n\nEjemplo: E:\\downloads\\kalin_experience_20260507.json");
+        
+        if (filePath && filePath.trim()) {
+          // Enviar mensaje al backend con la ruta
+          var input = document.getElementById("input");
+          input.value = "importar experiencia " + filePath;
+          sendMessage();
+        }
+      }
+
+      function checkDependencies() {
+        // Cerrar el menú
+        toggleSidebar();
+        
+        // Mostrar mensaje de verificación
+        addMessage("🔍 Verificando dependencias del sistema...", "user");
+        
+        // Llamar al endpoint de verificación
+        fetch("/system/check-dependencies")
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var results = data.results;
+              var message = "📊 **Estado del Sistema**\n\n";
+              
+              // Python
+              message += results.python ? "✅ **Python**: Instalado\n" : "❌ **Python**: No encontrado\n";
+              if (results.python_version) {
+                message += "   Versión: " + results.python_version + "\n";
+              }
+              message += "\n";
+              
+              // Pip
+              message += results.pip ? "✅ **pip**: Instalado\n" : "❌ **pip**: No encontrado\n";
+              message += "\n";
+              
+              // Flask
+              message += results.flask ? "✅ **Flask**: Instalado\n" : "❌ **Flask**: No instalado\n";
+              if (results.flask_version) {
+                message += "   Versión: " + results.flask_version + "\n";
+              }
+              message += "\n";
+              
+              // Ollama
+              message += results.ollama ? "✅ **Ollama**: Instalado y funcionando\n" : "❌ **Ollama**: No encontrado\n";
+              if (results.models && results.models.length > 0) {
+                message += "   Modelos instalados:\n";
+                results.models.forEach(function(model) {
+                  message += "   • " + model + "\n";
+                });
+              } else if (results.ollama) {
+                message += "   ⚠️  No hay modelos descargados. Ejecuta:\n";
+                message += "   `ollama pull deepseek-coder:6.7b`\n";
+              }
+              message += "\n";
+              
+              // Paquetes
+              message += "📦 **Paquetes Python**:\n";
+              results.packages.forEach(function(pkg) {
+                message += pkg.installed ? "✅ " : "❌ ";
+                message += pkg.name + "\n";
+              });
+              
+              // Recomendaciones
+              message += "\n💡 **Recomendaciones**:\n";
+              if (!results.ollama) {
+                message += "1. Instala Ollama desde ollama.com\n";
+                message += "2. Ejecuta: `ollama serve`\n";
+                message += "3. Descarga modelos: `ollama pull deepseek-coder:6.7b`\n";
+              } else if (!results.models || results.models.length === 0) {
+                message += "1. Descarga modelos: `ollama pull deepseek-coder:6.7b`\n";
+              }
+              
+              if (!results.flask || !results.pip) {
+                message += "\n2. Instala dependencias:\n";
+                message += "```bash\npip install -r requirements.txt\n```";
+              }
+              
+              addMessage(message, "bot");
+            } else {
+              addMessage("❌ Error al verificar dependencias", "bot");
+            }
+          })
+          .catch(function(error) {
+            addMessage("❌ Error: " + error.message, "bot");
+          });
+      }
+
+      function installDependencies() {
+        // Cerrar el menú
+        toggleSidebar();
+        
+        // Confirmación
+        if (!confirm("¿Instalar todas las dependencias de requirements.txt?\n\nEsto puede tardar varios minutos.")) {
+          return;
+        }
+        
+        addMessage("⚙️ Instalando dependencias... Esto puede tardar unos minutos.", "user");
+        
+        fetch("/system/install-dependencies", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var message = "✅ **Dependencias instaladas correctamente**\n\n";
+              message += "Todas las librerías necesarias han sido instaladas.\n\n";
+              message += "💡 **Próximos pasos:**\n";
+              message += "1. Verifica que Ollama esté instalado\n";
+              message += "2. Descarga los modelos recomendados\n";
+              message += "3. Reinicia Kalin si es necesario";
+              addMessage(message, "bot");
+            } else {
+              var message = "❌ **Error al instalar dependencias**\n\n";
+              message += data.message + "\n\n";
+              if (data.error) {
+                message += "**Detalles del error:**\n```\n" + data.error + "\n```";
+              }
+              addMessage(message, "bot");
+            }
+          })
+          .catch(function(error) {
+            addMessage("❌ Error: " + error.message, "bot");
+          });
+      }
+
+      function createVenv() {
+        // Cerrar el menú
+        toggleSidebar();
+        
+        // Confirmación
+        if (!confirm("¿Crear un entorno virtual de Python en la carpeta .venv?\n\nEsto aislará las dependencias de Kalin del sistema.")) {
+          return;
+        }
+        
+        addMessage("📦 Creando entorno virtual...", "user");
+        
+        fetch("/system/create-venv", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              addMessage(data.message, "bot");
+            } else if (data.status === 'warning') {
+              addMessage(data.message, "bot");
+            } else {
+              var message = "❌ **Error al crear entorno virtual**\n\n";
+              message += data.message;
+              if (data.error) {
+                message += "\n\n**Detalles:**\n```\n" + data.error + "\n```";
+              }
+              addMessage(message, "bot");
+            }
+          })
+          .catch(function(error) {
+            addMessage("❌ Error: " + error.message, "bot");
+          });
+      }
+
+      function downloadModels() {
+        // Cerrar el menú lateral
+        toggleSidebar();
+        
+        // Abrir modal de selección
+        openModelModal();
+      }
+
+      var selectedModels = [];
+
+      function openModelModal() {
+        var modal = document.getElementById('model-modal');
+        modal.classList.add('show');
+        
+        // Cargar lista de modelos
+        fetch('/system/available-models')
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              renderModelList(data.models);
+            }
+          })
+          .catch(function(error) {
+            console.error('Error cargando modelos:', error);
+          });
+      }
+
+      function closeModelModal() {
+        var modal = document.getElementById('model-modal');
+        modal.classList.remove('show');
+        selectedModels = [];
+      }
+
+      function renderModelList(models) {
+        var container = document.getElementById('model-list');
+        container.innerHTML = '';
+        
+        // Agrupar por categoría
+        var categories = {
+          'recommended': '⭐ Recomendados',
+          'popular': '🔥 Populares',
+          'latest': '✨ Últimos del Mercado',
+          'lightweight': '💚 Ligeros'
+        };
+        
+        var grouped = {};
+        models.forEach(function(model) {
+          if (!grouped[model.category]) {
+            grouped[model.category] = [];
+          }
+          grouped[model.category].push(model);
+        });
+        
+        // Renderizar por categoría
+        Object.keys(categories).forEach(function(category) {
+          if (grouped[category]) {
+            var categoryDiv = document.createElement('div');
+            categoryDiv.className = 'model-category';
+            
+            var title = document.createElement('div');
+            title.className = 'model-category-title';
+            title.textContent = categories[category];
+            categoryDiv.appendChild(title);
+            
+            grouped[category].forEach(function(model) {
+              var item = document.createElement('div');
+              item.className = 'model-item';
+              item.onclick = function() { toggleModelSelection(model.name, item); };
+              
+              var name = document.createElement('div');
+              name.className = 'model-name';
+              name.textContent = model.name;
+              
+              var size = document.createElement('div');
+              size.className = 'model-size';
+              size.textContent = 'Tamaño: ' + model.size;
+              
+              var desc = document.createElement('div');
+              desc.className = 'model-description';
+              desc.textContent = model.description;
+              
+              var useCase = document.createElement('div');
+              useCase.className = 'model-use-case';
+              useCase.textContent = 'Uso: ' + model.use_case;
+              
+              item.appendChild(name);
+              item.appendChild(size);
+              item.appendChild(desc);
+              item.appendChild(useCase);
+              
+              categoryDiv.appendChild(item);
+            });
+            
+            container.appendChild(categoryDiv);
+          }
+        });
+      }
+
+      function toggleModelSelection(modelName, element) {
+        var index = selectedModels.indexOf(modelName);
+        
+        if (index > -1) {
+          // Deseleccionar
+          selectedModels.splice(index, 1);
+          element.classList.remove('selected');
+        } else {
+          // Seleccionar
+          selectedModels.push(modelName);
+          element.classList.add('selected');
+        }
+        
+        // Actualizar botón
+        var btn = document.getElementById('download-selected-btn');
+        btn.disabled = selectedModels.length === 0;
+        btn.textContent = 'Descargar Seleccionados (' + selectedModels.length + ')';
+      }
+
+      function confirmDownloadModels() {
+        if (selectedModels.length === 0) {
+          return;
+        }
+        
+        // Cerrar modal
+        closeModelModal();
+        
+        // Confirmación final
+        var modelList = selectedModels.join('\n• ');
+        if (!confirm('¿Descargar los siguientes modelos?\n\n• ' + modelList + '\n\nEsto puede tardar varios minutos dependiendo de tu conexión.')) {
+          return;
+        }
+        
+        addMessage('📥 Descargando ' + selectedModels.length + ' modelo(s)... Esto puede tardar varios minutos.', 'user');
+        
+        fetch('/system/download-models', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ models: selectedModels })
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.status === 'success') {
+              var message = '📊 **Resultado de descarga de modelos**\n\n';
+              
+              data.results.forEach(function(result) {
+                message += result.message + '\n';
+              });
+              
+              message += '\n💡 **Modelos listos para usar:**\n';
+              selectedModels.forEach(function(model) {
+                message += '• ' + model + '\n';
+              });
+              message += '\n¡Kalin está listo para funcionar!';
+              
+              addMessage(message, 'bot');
+            } else {
+              addMessage('❌ Error al descargar modelos', 'bot');
+            }
+          })
+          .catch(function(error) {
+            addMessage('❌ Error: ' + error.message, 'bot');
+          });
       }
 
       document.getElementById("input").addEventListener("input", updateButton);

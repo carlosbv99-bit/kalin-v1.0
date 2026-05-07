@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778108013",
+  "messages": [
+    {
+      "role": "user",
+      "content": "genera el codigo en html para un calendario simple",
+      "timestamp": 1778108013.510857,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.",
+      "timestamp": 1778108164.9099097,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T00:53:33.509592",
+    "last_activity": "2026-05-07T00:56:04.909909",
+    "message_count": 2
+  }
+}

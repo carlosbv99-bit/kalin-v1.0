@@ -1,12 +1,16 @@
 {
-  "ruta_proyecto": "E:\\kalin",
-  "ultimo_archivo": null,
+  "ruta_proyecto": "C:\\Users\\Lazzita\\AppData\\Local\\Temp",
+  "ultimo_archivo": {
+    "ruta": "C:\\Users\\Lazzita\\AppData\\Local\\Temp\\github-copilot\\project-context\\kalin.496b3647\\main.dart.5e74b0e2.json",
+    "primeras_lineas": "{\"version\":\"1.0.0\",\"filePath\":\"file:///e%3A/kalin/main.dart\",\"hash\":\"60427c3f540debcbb30824af26f3aeebe589d5d81861d843001141e8e5fcd0ec\",\"lastModified\":1778098338239.266,\"documentChunks\":[{\"id\":\"file:///e%3A/kalin/main.dart#0\",\"chunk\":\"void main() {\\r\\n  print(\\\"Hola mundo\\\")\\r\\n}\",\"tokenCount\":11,\"ra"
+  },
   "ultimo_fix": {
     "ruta": "/test.py",
     "codigo_original": "original",
     "codigo_nuevo": "nuevo"
   },
-  "estrategia_activa": "smart",
-  "contador_fallos": 0,
+  "ultimo_codigo_generado": "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Calendario</title>\n    <style>\n        body { font-family: Arial, sans-serif; padding: 20px; }\n        table { width: 100%; border-collapse: collapse; }\n        th, td { padding: 10px; border: 1px solid #ddd; text-align: center; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n        th { background: #f0f0f0; font-weight: bold; }\n    </style>\n</head>\n<body>\n    <h1>Mayo 2026</h1>\n    <table>\n        <tr><th>Lun</th><th>Mar</th><th>Mi\u00e9</th><th>Jue</th><th>Vie</th><th>S\u00e1b</th><th>Dom</th></tr>\n        <tr><td></td><td></td><td></td><td></td><td>1</td><td>2</td><td>3</td></tr>\n        <tr><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td></tr>\n        <tr><td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td></tr>\n        <tr><td>18</td><td>19</td><td>20</td><td>21</td><td>22</td><td>23</td><td>24</td></tr>\n        <tr><td>25</td><td>26</td><td>27</td><td>28</td><td>29</td><td>30</td><td>31</td></tr>\n    </table>\n</body>\n</html>",
+  "estrategia_activa": "aggressive",
+  "contador_fallos": 5,
   "contador_exitos": 1
 }

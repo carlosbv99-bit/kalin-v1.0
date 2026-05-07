@@ -23,6 +23,9 @@ def extraer_codigo(respuesta: str) -> str:
     lineas = respuesta.split('\n')
     lineas_codigo = []
     
+    # Detectar si es HTML completo
+    es_html_completo = '<!doctype' in respuesta.lower() or '<html' in respuesta.lower()
+    
     for linea in lineas:
         linea_stripped = linea.strip()
         
@@ -30,6 +33,11 @@ def extraer_codigo(respuesta: str) -> str:
         if not linea_stripped:
             if lineas_codigo:  # Permitir líneas vacías en medio del código
                 lineas_codigo.append(linea)
+            continue
+        
+        # Si es HTML completo, preservar TODO (incluyendo CSS)
+        if es_html_completo:
+            lineas_codigo.append(linea)
             continue
         
         # Detectar si es línea de código válida

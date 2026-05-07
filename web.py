@@ -12,6 +12,7 @@ from agent.llm.client import get_provider_status
 from agent.core.brain import construir_contexto, planificar
 from agent.core.security_hardening import NetworkSecurity, CredentialManager
 from agent.core.stability import health_monitor, performance_optimizer
+from agent.core.experience_memory import get_experience_memory
 
 # Inicializar Flask con configuración segura
 app = Flask(__name__)
@@ -106,6 +107,342 @@ def system_status():
         return jsonify({
             "status": "error",
             "message": str(exc)
+        }), 500
+
+@app.route("/experience")
+def experience_status():
+    """Obtiene estado de la memoria experiencial"""
+    try:
+        exp_memory = get_experience_memory()
+        summary = exp_memory.get_learning_summary()
+        
+        return jsonify({
+            "respuesta": "🧠 Estado del Aprendizaje",
+            "summary": summary
+        })
+    except Exception as exc:
+        return jsonify({
+            "respuesta": f"❌ Error al obtener experiencia: {str(exc)}"
+        }), 500
+
+@app.route("/experience/patterns")
+def experience_patterns():
+    """Obtiene patrones detectados"""
+    try:
+        exp_memory = get_experience_memory()
+        patterns = exp_memory.get_patterns()
+        
+        return jsonify({
+            "respuesta": f"🔍 Patrones Detectados ({len(patterns)})",
+            "patterns": [p.to_dict() for p in patterns]
+        })
+    except Exception as exc:
+        return jsonify({
+            "respuesta": f"❌ Error al obtener patrones: {str(exc)}"
+        }), 500
+
+@app.route("/system/check-dependencies")
+def check_dependencies():
+    """Verifica el estado de las dependencias del sistema"""
+    import subprocess
+    import sys
+    
+    results = {
+        'python': False,
+        'pip': False,
+        'ollama': False,
+        'flask': False,
+        'packages': []
+    }
+    
+    # Verificar Python
+    try:
+        result = subprocess.run([sys.executable, '--version'], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            results['python'] = True
+            results['python_version'] = result.stdout.strip()
+    except:
+        pass
+    
+    # Verificar pip
+    try:
+        result = subprocess.run([sys.executable, '-m', 'pip', '--version'], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            results['pip'] = True
+    except:
+        pass
+    
+    # Verificar Flask
+    try:
+        import flask
+        results['flask'] = True
+        results['flask_version'] = flask.__version__
+    except:
+        pass
+    
+    # Verificar Ollama
+    try:
+        result = subprocess.run(['ollama', 'list'], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            results['ollama'] = True
+            # Extraer modelos instalados
+            lines = result.stdout.strip().split('\n')[1:]  # Saltar header
+            models = []
+            for line in lines:
+                if line.strip():
+                    parts = line.split()
+                    if parts:
+                        models.append(parts[0])
+            results['models'] = models
+    except:
+        pass
+    
+    # Verificar paquetes principales
+    required_packages = [
+        'flask', 'flask-cors', 'python-dotenv', 'requests'
+    ]
+    
+    for package in required_packages:
+        try:
+            __import__(package.replace('-', '_'))
+            results['packages'].append({'name': package, 'installed': True})
+        except ImportError:
+            results['packages'].append({'name': package, 'installed': False})
+    
+    return jsonify({
+        'status': 'success',
+        'results': results
+    })
+
+@app.route("/system/install-dependencies", methods=['POST'])
+def install_dependencies():
+    """Instala las dependencias automáticamente"""
+    import subprocess
+    import sys
+    
+    try:
+        # Instalar desde requirements.txt
+        result = subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutos máximo
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'status': 'success',
+                'message': '✅ Dependencias instaladas correctamente',
+                'output': result.stdout[-500:]  # Últimos 500 caracteres
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ Error al instalar dependencias',
+                'error': result.stderr[-500:]
+            }), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': '⏱️  Timeout: La instalación tardó demasiado'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error: {str(e)}'
+        }), 500
+
+@app.route("/system/download-models", methods=['POST'])
+def download_models():
+    """Descarga los modelos seleccionados de Ollama"""
+    import subprocess
+    
+    data = request.get_json()
+    selected_models = data.get('models', [])
+    
+    if not selected_models:
+        return jsonify({
+            'status': 'error',
+            'message': '❌ No se seleccionaron modelos'
+        }), 400
+    
+    results = []
+    
+    for model in selected_models:
+        try:
+            # Verificar si ya está instalado
+            check = subprocess.run(
+                ['ollama', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if model in check.stdout:
+                results.append({
+                    'model': model,
+                    'status': 'already_installed',
+                    'message': f'✅ {model} ya está instalado'
+                })
+                continue
+            
+            # Descargar modelo
+            result = subprocess.run(
+                ['ollama', 'pull', model],
+                capture_output=True,
+                text=True,
+                timeout=600  # 10 minutos máximo por modelo
+            )
+            
+            if result.returncode == 0:
+                results.append({
+                    'model': model,
+                    'status': 'success',
+                    'message': f'✅ {model} descargado correctamente'
+                })
+            else:
+                results.append({
+                    'model': model,
+                    'status': 'error',
+                    'message': f'❌ Error al descargar {model}'
+                })
+        
+        except subprocess.TimeoutExpired:
+            results.append({
+                'model': model,
+                'status': 'timeout',
+                'message': f'⏱️  Timeout descargando {model}'
+            })
+        except Exception as e:
+            results.append({
+                'model': model,
+                'status': 'error',
+                'message': f'❌ Error: {str(e)}'
+            })
+    
+    return jsonify({
+        'status': 'success',
+        'results': results
+    })
+
+@app.route("/system/available-models")
+def available_models():
+    """Obtiene lista de modelos recomendados y populares"""
+    recommended = [
+        {
+            'name': 'deepseek-coder:6.7b',
+            'size': '~4GB',
+            'category': 'recommended',
+            'description': 'Especializado en generación de código (Python, JS, Java, etc.)',
+            'use_case': 'Generación y análisis de código'
+        },
+        {
+            'name': 'llama3.2:3b',
+            'size': '~2GB',
+            'category': 'recommended',
+            'description': 'Modelo ligero para conversación y tareas generales',
+            'use_case': 'Chat y asistencia conversacional'
+        },
+        {
+            'name': 'qwen2.5-coder:7b',
+            'size': '~4.5GB',
+            'category': 'recommended',
+            'description': 'Excelente para programación multi-lenguaje',
+            'use_case': 'Desarrollo de software'
+        },
+        {
+            'name': 'codellama:7b',
+            'size': '~4GB',
+            'category': 'popular',
+            'description': 'Modelo de Meta especializado en código',
+            'use_case': 'Programación y debugging'
+        },
+        {
+            'name': 'mistral:7b',
+            'size': '~4GB',
+            'category': 'popular',
+            'description': 'Modelo versátil de alto rendimiento',
+            'use_case': 'Tareas generales y razonamiento'
+        },
+        {
+            'name': 'llama3.1:8b',
+            'size': '~5GB',
+            'category': 'popular',
+            'description': 'Última versión de Llama con mejor rendimiento',
+            'use_case': 'Asistente general avanzado'
+        },
+        {
+            'name': 'phi3:mini',
+            'size': '~2GB',
+            'category': 'lightweight',
+            'description': 'Modelo ultra-ligero de Microsoft',
+            'use_case': 'Equipos con recursos limitados'
+        },
+        {
+            'name': 'gemma2:9b',
+            'size': '~5.5GB',
+            'category': 'latest',
+            'description': 'Último modelo de Google, excelente calidad',
+            'use_case': 'Tareas complejas y creativas'
+        }
+    ]
+    
+    return jsonify({
+        'status': 'success',
+        'models': recommended
+    })
+
+@app.route("/system/create-venv", methods=['POST'])
+def create_venv():
+    """Crea un entorno virtual de Python"""
+    import subprocess
+    import sys
+    import os
+    
+    try:
+        venv_path = os.path.join(os.getcwd(), '.venv')
+        
+        # Verificar si ya existe
+        if os.path.exists(venv_path):
+            return jsonify({
+                'status': 'warning',
+                'message': f'⚠️ El entorno virtual ya existe en: {venv_path}',
+                'path': venv_path
+            })
+        
+        # Crear entorno virtual
+        result = subprocess.run(
+            [sys.executable, '-m', 'venv', '.venv'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'status': 'success',
+                'message': f'✅ Entorno virtual creado en: {venv_path}\n\n💡 **Próximos pasos:**\n1. Activa el entorno:\n   - Windows: `.venv\\Scripts\\activate`\n   - Linux/Mac: `source .venv/bin/activate`\n2. Instala dependencias: `pip install -r requirements.txt`',
+                'path': venv_path
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ Error al crear entorno virtual',
+                'error': result.stderr
+            }), 500
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': '⏱️ Timeout creando entorno virtual'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error: {str(e)}'
         }), 500
 
 # ==============================

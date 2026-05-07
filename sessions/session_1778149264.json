@@ -1,0 +1,60 @@
+{
+  "session_id": "session_1778149264",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1778149264.3905087,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Tienes alguna idea interesante en mente?",
+      "timestamp": 1778149269.3797653,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": 1778150521.5488987,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿Tienes alguna idea interesante en mente? ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1778150550.8569262,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "puedes escribir codigo html?",
+      "timestamp": 1778150567.5168545,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Claro! ¿Podrías decirme más sobre qué necesitas exactamente? ¿Una página web básica, un formulario o algo más complejo?",
+      "timestamp": 1778150674.0448833,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "hola hola",
+      "timestamp": 1778150678.2304842,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": 1778150722.0571873,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-07T12:21:04.390508",
+    "last_activity": "2026-05-07T12:45:22.057187",
+    "message_count": 8
+  }
+}

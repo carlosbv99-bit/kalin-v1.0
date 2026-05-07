@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778104290",
+  "messages": [
+    {
+      "role": "user",
+      "content": "void main() { print(\"Hola mundo\") }",
+      "timestamp": 1778104290.1312366,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ Error: name 'accion' is not defined",
+      "timestamp": 1778104290.142255,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-06T23:51:30.130169",
+    "last_activity": "2026-05-06T23:51:30.142255",
+    "message_count": 2
+  }
+}

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Interfaz abstracta para proveedores LLM.
 
 Todos los proveedores (Ollama, OpenAI, Claude, etc.) implementan esta interfaz.
@@ -37,13 +37,17 @@ class BaseLLMProvider(ABC):
         pass
 
     @abstractmethod
-    def generate(self, prompt: str, max_tokens: int = 1200) -> Optional[LLMResponse]:
+    def generate(self, prompt: str, max_tokens: int = 1200, temperature: float = None) -> Optional[LLMResponse]:
         """
         Genera respuesta para un prompt.
 
         Args:
             prompt: Texto a procesar
             max_tokens: Máximo de tokens a generar
+            temperature: Temperatura (0.0-1.0). Controla creatividad vs determinismo.
+                        - Baja (0.1-0.3): Más preciso, repetitivo, bueno para código
+                        - Media (0.4-0.6): Balanceado
+                        - Alta (0.7-1.0): Más creativo, variado, bueno para chat
 
         Returns:
             LLMResponse con la respuesta, o None si falla

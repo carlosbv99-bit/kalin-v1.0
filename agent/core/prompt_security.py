@@ -191,7 +191,9 @@ class ResultVerifier:
         
         if task_type == 'fix':
             # Verificar fix de código
-            if 'preview' not in result or not result.get('preview'):
+            if not result.get('preview', '').strip():
+                verification['errors'].append("FAIL")
+            elif 'preview' not in result or not result.get('preview'):
                 verification['errors'].append("No hay preview del código fixeado")
             elif len(result['preview']) < 50:
                 verification['partial'] = True

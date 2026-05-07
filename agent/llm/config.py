@@ -6,7 +6,6 @@ import os
 class ProviderType(Enum):
     """Tipos de proveedores LLM soportados"""
     OLLAMA = "ollama"
-    OLLAMA_CHAT = "ollama_chat"  # Modelo especializado para chat
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     AZURE = "azure"
@@ -33,14 +32,6 @@ class LLMConfig:
             "model": os.getenv("OLLAMA_MODEL", "deepseek-coder:latest"),
             "api_key": None,
             "timeout": int(os.getenv("OLLAMA_TIMEOUT", 180)),  # 🔥 más margen local
-            "cost_per_1k": 0,
-        },
-        # Modelo especializado para CHAT/CONVERSACIÓN
-        ProviderType.OLLAMA_CHAT: {
-            "endpoint": os.getenv("OLLAMA_ENDPOINT", "http://127.0.0.1:11434"),
-            "model": os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b"),  # Modelo conversacional
-            "api_key": None,
-            "timeout": int(os.getenv("OLLAMA_TIMEOUT", 180)),
             "cost_per_1k": 0,
         },
         ProviderType.OPENAI: {
@@ -103,13 +94,16 @@ class LLMConfig:
     # ROUTING POR CASO DE USO
     # =========================
     USE_CASE_ROUTER = {
-        "fix": {"max_tokens": 4000},
-        "enhance": {"max_tokens": 4000},
-        "analyze": {"max_tokens": 1200},
-        "create": {"max_tokens": 4000},
-        "design": {"max_tokens": 4000},
-        "test": {"max_tokens": 2000},
-        "doc": {"max_tokens": 2000},
+        "fix": {"max_tokens": 4000, "temperature": 0.2},      # Backend: código preciso
+        "enhance": {"max_tokens": 4000, "temperature": 0.2},   # Backend: código preciso
+        "analyze": {"max_tokens": 1200, "temperature": 0.3},   # Backend: análisis técnico
+        "create": {"max_tokens": 4000, "temperature": 0.2},    # Backend: generación código
+        "design": {"max_tokens": 4000, "temperature": 0.3},    # Backend: diseño técnico
+        "test": {"max_tokens": 2000, "temperature": 0.2},      # Backend: tests precisos
+        "doc": {"max_tokens": 2000, "temperature": 0.3},       # Backend: documentación
+        "chat": {"max_tokens": 1000, "temperature": 0.8},      # Frontend: conversacional creativo
+        "greeting": {"max_tokens": 500, "temperature": 0.9},   # Frontend: saludos variados
+        "show_code": {"max_tokens": 500, "temperature": 0.1},  # Frontend: mostrar código (determinista)
     }
 
     # =========================
@@ -135,14 +129,19 @@ class LLMConfig:
         return cls.USE_CASE_ROUTER.get(use_case, {}).get("max_tokens", 1200)
 
     @classmethod
+    def get_temperature(cls, use_case: str = "fix") -> float:
+        """Obtiene temperatura configurada para el caso de uso"""
+        return cls.USE_CASE_ROUTER.get(use_case, {}).get("temperature", 0.7)
+
+    @classmethod
     def is_configured(cls, provider: ProviderType) -> bool:
         config = cls.PROVIDERS.get(provider)
 
         if not config:
             return False
 
-        # Ollama y Ollama Chat siempre disponibles en local
-        if provider in [ProviderType.OLLAMA, ProviderType.OLLAMA_CHAT]:
+        # Ollama siempre disponible en local
+        if provider == ProviderType.OLLAMA:
             return True
 
         return bool(config.get("api_key"))
