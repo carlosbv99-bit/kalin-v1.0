@@ -13,7 +13,7 @@ from agent.llm.providers.ollama_provider import OllamaProvider
 from agent.llm.providers.openai_provider import OpenAIProvider
 from agent.llm.providers.anthropic_provider import AnthropicProvider
 
-DEBUG_MODE = os.getenv("KALIN_DEBUG", "0").lower() in ["1", "true", "yes"]
+DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
 
 # =========================
 # PROMPTS CONTROLADOS

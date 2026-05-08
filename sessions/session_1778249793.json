@@ -1,0 +1,24 @@
+{
+  "session_id": "session_1778249793",
+  "messages": [
+    {
+      "role": "user",
+      "content": "crea un dado 3d en java",
+      "timestamp": 1778249793.9917448,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.",
+      "timestamp": 1778249908.1576557,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-08T16:16:33.985093",
+    "last_activity": "2026-05-08T16:18:28.157655",
+    "message_count": 2
+  }
+}

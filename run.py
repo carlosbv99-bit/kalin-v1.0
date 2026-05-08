@@ -21,7 +21,7 @@ import web
 # Configuración desde .env
 host = os.getenv('FLASK_HOST', '127.0.0.1')
 port = int(os.getenv('FLASK_PORT', '5000'))
-debug = os.getenv('FLASK_DEBUG', '0').lower() in ('1', 'true', 'yes')
+debug = False  # FORZADO A FALSE - Sin reinicios automáticos
 
 def open_browser():
     """Abrir navegador automaticamente despues de iniciar"""
@@ -47,9 +47,10 @@ if host == '0.0.0.0' and not debug:
     print("   Para produccion, usa un reverse proxy (nginx) con HTTPS\n")
 
 # Abrir navegador en un hilo separado
-browser_thread = threading.Thread(target=open_browser)
-browser_thread.daemon = True
-browser_thread.start()
+# DESACTIVADO TEMPORALMENTE - Evitar envío automático de mensajes
+# browser_thread = threading.Thread(target=open_browser)
+# browser_thread.daemon = True
+# browser_thread.start()
 
 # Iniciar servidor Flask
 web.app.run(host=host, port=port, debug=debug)

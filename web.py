@@ -1050,10 +1050,23 @@ def chat():
 
     data = request.json or {}
     mensaje = (data.get("mensaje") or data.get("command") or data.get("message") or "").strip()
+    
+    # LOG CRÍTICO: Detectar todas las peticiones
+    import logging
+    logger = logging.getLogger('kalin')
+    logger.warning(f"\n{'='*80}\n🔴 PETICIÓN /chat RECIBIDA\nMensaje: '{mensaje[:100]}'\nSession ID: {data.get('session_id', 'NUEVA')}\n{'='*80}")
+    
+    # Obtener o generar session_id para mantener contexto conversacional
+    session_id = data.get("session_id")
+    if not session_id:
+        # Generar nuevo session_id solo si no se proporciona
+        import time
+        session_id = f"session_{int(time.time())}"
 
     estado = {
         "ruta_proyecto": RUTA_PROYECTO,
-        "ultimo_fix": ULTIMO_FIX
+        "ultimo_fix": ULTIMO_FIX,
+        "session_id": session_id  # Pasar session_id al orchestrator
     }
 
     utils = {
@@ -1070,13 +1083,35 @@ def chat():
 
     try:
         response = orchestrator.handle(mensaje, estado, utils)
+        
+        # Incluir session_id en la respuesta para que el frontend lo reenvíe
+        if hasattr(response, 'get_json'):
+            response_data = response.get_json()
+            response_data['session_id'] = session_id
+            
+            # DEBUG: Log de la respuesta antes de enviar
+            import logging
+            logger = logging.getLogger('kalin')
+            logger.info(f"Sending response with keys: {list(response_data.keys())}")
+            if 'respuesta' in response_data:
+                logger.info(f"Response length: {len(response_data['respuesta'])} chars")
+                # Verificar si hay caracteres problemáticos
+                double_quotes_count = response_data['respuesta'].count('"')
+                if double_quotes_count > 0:
+                    logger.warning(f"Response contains {double_quotes_count} double quotes")
+            
+            # jsonify escapará automáticamente todos los caracteres especiales
+            return jsonify(response_data)
+        return response
+        
     except Exception as exc:
-        return jsonify({"respuesta": f"❌ Error interno: {str(exc)}"}), 500
+        return jsonify({
+            "respuesta": f"❌ Error interno: {str(exc)}",
+            "session_id": session_id
+        }), 500
 
     RUTA_PROYECTO = estado.get("ruta_proyecto", RUTA_PROYECTO)
     ULTIMO_FIX = estado.get("ultimo_fix", ULTIMO_FIX)
-
-    return response
 
 # ==============================
 # 🚀 START

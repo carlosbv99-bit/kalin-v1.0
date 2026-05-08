@@ -905,6 +905,8 @@
 
       var recognition = null;
       var isRecording = false;
+      // DESACTIVADO: No usar session_id persistente para evitar cargar historial antiguo
+      // var currentSessionId = null;
 
       if (
         "webkitSpeechRecognition" in window ||
@@ -962,18 +964,31 @@
         input.value = "";
         updateButton();
 
+        // Preparar datos SIN session_id (nueva sesión cada vez)
+        var requestData = { mensaje: message };
+        // DESACTIVADO: No enviar session_id para evitar cargar historial
+        // if (currentSessionId) {
+        //   requestData.session_id = currentSessionId;
+        // }
+
         // Usar ruta relativa en lugar de URL absoluta para evitar problemas de CORS
         fetch("/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ mensaje: message }),
+          body: JSON.stringify(requestData),
         })
           .then(function (response) {
             return response.json();
           })
           .then(function (data) {
+            // DESACTIVADO: No guardar session_id
+            // if (data.session_id) {
+            //   currentSessionId = data.session_id;
+            //   console.log('📝 Session ID:', currentSessionId);
+            // }
+            
             var text = data.respuesta || "Sin respuesta";
             addMessage(text, "bot");
           })

@@ -569,7 +569,7 @@ class Executor:
             self.conversation_memory.update_context(
                 intention="create",
                 args={"texto": prompt, "file_type": file_type},
-                result=nuevo[:500] if nuevo else None,
+                result=nuevo,  # Pasar el código completo, no solo un resumen
                 metadata={
                     "duration": duration,
                     "code_length": len(nuevo),
@@ -584,9 +584,14 @@ class Executor:
             
             # Mostrar el CÓDIGO FUENTE automáticamente (no compilado)
             lenguaje_display = file_type.upper() if len(file_type) <= 3 else file_type.capitalize()
-            respuesta = f"✅ Código {lenguaje_display} generado exitosamente:\n\n```{file_type}\n{nuevo}\n```"
             
-            return jsonify({"respuesta": respuesta, "preview": nuevo[:800]})
+            # jsonify escapará automáticamente los caracteres especiales
+            respuesta_texto = f"✅ Código {lenguaje_display} generado exitosamente:\n\n```{file_type}\n{nuevo}\n```"
+            
+            # DEBUG: Verificar longitud
+            logger.info(f"Returning response with code length: {len(nuevo)} chars")
+            
+            return jsonify({"respuesta": respuesta_texto, "preview": nuevo[:800]})
 
         if intencion == "show_code":
             # Mostrar último código generado

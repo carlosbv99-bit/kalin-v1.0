@@ -194,16 +194,19 @@ def detectar_intencion(mensaje: str) -> str:
     # Create - crear/generar código (detecta solicitudes implícitas)
     if m.startswith("/create") or any(frase in m for frase in [
         "crea", "crear", "genera", "generar", "haz una app",
-        "build", "desarrolla", "desarrollar", "construye",
+        "build", "desarrolla", "desarrollar", "construye", "construir",
         "nuevo proyecto", "quiero hacer", "necesito crear",
         "diseña", "diseñar",
         # Solicitudes implícitas de código
-        "ayúdame a", "ayudame a", "ayuda con",
-        "quiero un", "necesito un", "busco un",
+        "ayúdame a", "ayudame a", "ayuda con", "ayudes a",
+        "quiero un", "necesito un", "busco un", "quiero que",
         "cómo hago", "como hago", "cómo crear",
         "código para", "codigo para", "programa para",
         "función para", "funcion para", "clase para",
-        "app de", "aplicación de", "sistema de"
+        "app de", "aplicación de", "sistema de",
+        # Tipos específicos de aplicaciones
+        "agenda personal", "gestor de tareas", "lista de contactos",
+        "base de datos", "crud", "sistema de gestión"
     ]):
         return "create"
 

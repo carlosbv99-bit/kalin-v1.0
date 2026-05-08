@@ -7,7 +7,7 @@ from agent.extractor import extraer_codigo
 from agent.llm.client import generate
 
 # Configuración de debug
-DEBUG_MODE = os.getenv("KALIN_DEBUG", "0").lower() in ["1", "true", "yes"]
+DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
 
 
 def extract_code(input_data):
@@ -362,13 +362,10 @@ def _generar_candidato(prompt: str, max_tokens: int = 1200) -> str:
             print(respuesta_limpia[:1000])
         print("="*80 + "\n")
     
-    # TEMPORAL: Desactivar filtro de chatbot para debugging
-    # if es_chatbot(respuesta_limpia):
-    #     return ""
-    
+    # DETECTAR respuestas tipo chatbot (NO son código)
     if es_chatbot(respuesta_limpia):
-        if DEBUG_MODE:
-            print(f"⚠️  Detectado como chatbot pero continuando")
+        print(f"⚠️  Detectada respuesta tipo chatbot, rechazando...")
+        return ""  # Rechazar y reintentar
 
     codigo_extraido = extraer_codigo(respuesta_limpia)
     resultado = codigo_extraido or respuesta_limpia
@@ -427,6 +424,7 @@ def generar_codigo(requerimiento: str, max_intentos: int = 3) -> str:
         'typescript': 'TypeScript',
         'ts': 'TypeScript',
         'html': 'HTML',
+        'htm': 'HTML',  # Soporte para typo común
         'css': 'CSS',
         'java': 'Java',
         'c++': 'C++',
@@ -434,16 +432,28 @@ def generar_codigo(requerimiento: str, max_intentos: int = 3) -> str:
         'c#': 'C#',
         'csharp': 'C#',
         'ruby': 'Ruby',
-        'go': 'Go',
         'rust': 'Rust',
     }
     
     lenguaje = 'Python'  # default
     requerimiento_lower = requerimiento.lower()
+    
+    # Primero verificar lenguajes multi-caracter (evitar falsos positivos)
     for key, value in lenguajes_posibles.items():
-        if key in requerimiento_lower:
+        if len(key) >= 3 and key in requerimiento_lower:
             lenguaje = value
             break
+    
+    # Si no se encontró, verificar lenguajes cortos con límites de palabra
+    if lenguaje == 'Python':
+        import re
+        for key, value in lenguajes_posibles.items():
+            if len(key) < 3:
+                # Usar regex para buscar palabra completa
+                pattern = r'\b' + re.escape(key) + r'\b'
+                if re.search(pattern, requerimiento_lower):
+                    lenguaje = value
+                    break
 
     # Construir ejemplos según el lenguaje
     instrucciones_extra = ""  # Default vacío
@@ -453,85 +463,132 @@ def generar_codigo(requerimiento: str, max_intentos: int = 3) -> str:
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Calendario</title>
+    <title>Mi Aplicación</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-        th { background: #f0f0f0; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
     </style>
 </head>
 <body>
-    <h1>Mayo 2026</h1>
-    <table>
-        <tr><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th></tr>
-        <tr><td></td><td></td><td></td><td></td><td>1</td><td>2</td><td>3</td></tr>
-        <tr><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td></tr>
-        <tr><td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td></tr>
-        <tr><td>18</td><td>19</td><td>20</td><td>21</td><td>22</td><td>23</td><td>24</td></tr>
-        <tr><td>25</td><td>26</td><td>27</td><td>28</td><td>29</td><td>30</td><td>31</td></tr>
-    </table>
+    <div class="container">
+        <h1>Bienvenido</h1>
+        <button onclick="alert('Hola')">Click Aquí</button>
+    </div>
 </body>
 </html>"""
-        ejemplo_malo = """<!-- Calendario -->
+        ejemplo_malo = """<!-- Comentario -->
 <html>
-<!-- Esto es un comentario -->
 <body>
-<h1>Calendario</h1> <!-- Comentario inline -->
-<table border="1">
-<tr><td>1</td></tr>
-</table>
+<h1>Título</h1> <!-- Otro comentario -->
+<button>Haz click</button>
 </body>
 </html>"""
         
-        # INSTRUCCIONES ESPECÍFICAS PARA HTML
         instrucciones_extra = """
 IMPORTANTE PARA HTML:
 - NO uses comentarios HTML (<!-- -->)
-- INCLUYE CSS COMPLETO y PROFESIONAL en <style> con:
-  * Colores atractivos y modernos
-  * Bordes redondeados (border-radius)
-  * Sombras suaves (box-shadow)
-  * Espaciado adecuado (padding/margin)
-  * Centrado de contenido
-  * Tipografía legible
-- Genera un calendario COMPLETO con todos los días del mes actual
+- INCLUYE CSS COMPLETO y PROFESIONAL en <style>
 - Usa estructura semántica correcta
-- El calendario debe verse PROFESIONAL y bien diseñado
-- Puedes usar flexbox o grid para layout"""
+- Diseño responsive y moderno"""
     elif lenguaje == 'JavaScript':
-        ejemplo_bueno = """function generarCalendario(anio, mes) {
-    const fecha = new Date(anio, mes - 1, 1);
-    return fecha;
+        ejemplo_bueno = """class UserManager {
+    constructor() {
+        this.users = [];
+    }
+
+    addUser(name, email) {
+        this.users.push({ name, email });
+    }
+
+    listUsers() {
+        return this.users;
+    }
 }
 
-console.log(generarCalendario(2024, 5));"""
-        ejemplo_malo = """// Calendario simple
-function gen_cal(a, m) { // Nombres malos
+const manager = new UserManager();
+manager.addUser('Juan', 'juan@email.com');
+console.log(manager.listUsers());"""
+        ejemplo_malo = """// Funcion simple
+function gen(a, m) { // Nombres malos
     /* Comentario */
     return a + m; // Comentario inline
 }"""
+    elif lenguaje == 'Java':
+        ejemplo_bueno = """import java.util.ArrayList;
+import java.util.List;
+
+public class DataManager {
+    private List<String> items;
+    
+    public DataManager() {
+        this.items = new ArrayList<>();
+    }
+    
+    public void addItem(String item) {
+        items.add(item);
+        System.out.println("Item agregado: " + item);
+    }
+    
+    public void listItems() {
+        System.out.println("=== Lista de Items ===");
+        for (int i = 0; i < items.size(); i++) {
+            System.out.println((i + 1) + ". " + items.get(i));
+        }
+    }
+    
+    public static void main(String[] args) {
+        DataManager manager = new DataManager();
+        manager.addItem("Item 1");
+        manager.addItem("Item 2");
+        manager.listItems();
+    }
+}"""
+        ejemplo_malo = """// Clase simple
+public class data { // Nombre en minuscula
+    String[] d; // Variable corta
+    
+    public static void main(String[] args) {
+        data obj = new data(); // Instancia con nombre malo
+    }
+}"""
+        instrucciones_extra = """
+PARA JAVA:
+- INCLUIR SIEMPRE método main() para que el código sea ejecutable
+- El código debe ser COMPLETO y funcional
+- Incluir imports necesarios al inicio"""
     elif lenguaje == 'Python':
-        ejemplo_bueno = """import calendar
-from datetime import date
+        ejemplo_bueno = """class DataManager:
+    def __init__(self):
+        self.items = []
+    
+    def add_item(self, name, value):
+        item = {
+            'name': name,
+            'value': value
+        }
+        self.items.append(item)
+        return item
+    
+    def list_items(self):
+        return self.items
+    
+    def find_item(self, name):
+        results = [i for i in self.items if name.lower() in i['name'].lower()]
+        return results
 
-def generar_calendario(anio=None, mes=None):
-    if anio is None:
-        anio = date.today().year
-    if mes is None:
-        mes = date.today().month
-    cal = calendar.TextCalendar(firstweekday=6)
-    return cal.formatmonth(anio, mes)
-
-if __name__ == "__main__":
-    print(generar_calendario())"""
-        ejemplo_malo = """# Calendario simple
-import calendar  # NO COMENTARIOS
-
-def gen_cal(a, m):  # NOMBRES MALOS
-    '''Funcion calendario'''  # NO DOCSTRINGS
-    c = calendar.TextCalendar()  # VARIABLES CORTAS
-    return c.formatmonth(a, m).replace('\\n', '')  # CODIGO INNATURAL"""
+if __name__ == '__main__':
+    manager = DataManager()
+    manager.add_item('Item1', 100)
+    print(manager.list_items())"""
+        ejemplo_malo = """# Funcion simple
+def gen_data():  # NOMBRES MALOS
+    '''Funcion datos'''  # NO DOCSTRINGS
+    d = []  # VARIABLES CORTAS
+    return d  # CODIGO INNATURAL"""
+        instrucciones_extra = ""
     else:
         # Default para otros lenguajes
         ejemplo_bueno = f"""// Código {lenguaje} limpio
@@ -547,7 +604,7 @@ function main() {{ // Comentario inline
     console.log("test");
 }}"""
 
-    prompt = f"""ERES UN GENERADOR DE CÓDIGO, NO UN ASISTENTE CONVERSACIONAL.
+    prompt = f"""ERES UN GENERADOR DE CÓDIGO PROFESIONAL.
 
 REGLAS ABSOLUTAS (VIOLAR CUALQUIERA = FRACASO):
 1. GENERA DIRECTAMENTE código {lenguaje} funcional y completo
@@ -561,19 +618,24 @@ REGLAS ABSOLUTAS (VIOLAR CUALQUIERA = FRACASO):
 9. NUNCA agregues texto antes o después del código
 10. Si no puedes cumplir estas reglas, devuelve cadena vacía
 
-FORMATO CORRECTO:
-import calendar
+INSTRUCCIONES IMPORTANTES:
+- Analiza el REQUERIMIENTO del usuario cuidadosamente
+- Genera código apropiado para el tipo de aplicación solicitada
+- Usa nombres de variables descriptivos y profesionales
+- Sigue las mejores prácticas del lenguaje {lenguaje}
+- El código debe ser funcional y ejecutable
+{instrucciones_extra}
 
-def generar_calendario():
-    pass
+FORMATO CORRECTO:
+{ejemplo_bueno}
 
 FORMATO INCORRECTO:
 ¡Excelente! Aquí tienes el código...
-```python
-import calendar
+```{lenguaje.lower()}
+código aquí
 ```
 
-REQUERIMIENTO:
+REQUERIMIENTO DEL USUARIO:
 {requerimiento}
 
 GENERA AHORA SOLO EL CÓDIGO {lenguaje.upper()}:"""
@@ -585,22 +647,49 @@ GENERA AHORA SOLO EL CÓDIGO {lenguaje.upper()}:"""
         
         # VALIDAR calidad del código
         if candidato and _es_codigo_de_calidad(candidato, lenguaje):
+            
             score = calcular_score_calidad(candidato)
             print(f"✅ Código de calidad aceptable en intento {intento + 1} (score: {score:.2f})")
             candidatos.append((score, candidato))
             
-            # OPTIMIZACIÓN: Si es el primer intento y tiene alta calidad (>0.7), detenerse
-            if intento == 0 and score > 0.7:
-                print(f"⚡ Código de ALTA calidad detectado. Omitiendo reintentos para mayor velocidad.")
+            # OPTIMIZACIÓN: Si es el primer intento y tiene calidad aceptable (>0.5), detenerse
+            if intento == 0 and score > 0.5:
+                print(f"⚡ Código de calidad aceptable detectado en primer intento. Omitiendo reintentos para mayor velocidad.")
                 return candidato
         else:
             print(f"⚠️  Código de baja calidad, reintentando...")
-            # Para HTML, mostrar por qué falló (debug)
-            if lenguaje == 'HTML' and DEBUG_MODE and candidato:
+            if DEBUG_MODE or lenguaje.lower() in ['java', 'python']:
                 print(f"   - Longitud: {len(candidato)} chars")
-                print(f"   - Tiene DOCTYPE/html: {'<!DOCTYPE' in candidato or '<html' in candidato}")
-                print(f"   - Tiene comentarios: {'<!--' in candidato}")
-                print(f"   - Primeras 200 chars: {candidato[:200]}")
+                print(f"   - Tiene estructura básica: {_es_codigo_de_calidad(candidato, lenguaje)}")
+                # Debug detallado para Java
+                if lenguaje.lower() == 'java' and candidato:
+                    lineas = candidato.split('\n')
+                    print(f"   - Número de líneas: {len(lineas)}")
+                    tiene_imports = any(l.strip().startswith('import ') for l in lineas)
+                    tiene_class = 'class ' in candidato
+                    tiene_main = 'public static void main' in candidato or 'void main' in candidato
+                    tiene_metodos = any(kw in candidato for kw in ['public void', 'private void', 'public String', 'public int', 'private int', 'public double', 'private double'])
+                    print(f"   - Tiene imports: {tiene_imports}")
+                    print(f"   - Tiene class: {tiene_class}")
+                    print(f"   - Tiene main: {tiene_main}")
+                    print(f"   - Tiene metodos: {tiene_metodos}")
+                    # Verificar patrones malos
+                    patrones_malos = ['.replace(\\\n', 'gen_cal', 'a, m)']
+                    for patron in patrones_malos:
+                        if patron in candidato:
+                            print(f"   - ❌ Contiene patrón malo: '{patron}'")
+                # Debug detallado para Python
+                elif lenguaje.lower() == 'python' and candidato:
+                    lineas = candidato.split('\n')
+                    print(f"   - Número de líneas: {len(lineas)}")
+                    tiene_imports = any(l.strip().startswith('import ') or l.strip().startswith('from ') for l in lineas)
+                    tiene_class = 'class ' in candidato
+                    tiene_funciones = 'def ' in candidato
+                    tiene_main_block = "if __name__" in candidato
+                    print(f"   - Tiene imports: {tiene_imports}")
+                    print(f"   - Tiene class: {tiene_class}")
+                    print(f"   - Tiene funciones: {tiene_funciones}")
+                    print(f"   - Tiene if __name__: {tiene_main_block}")
     
     if not candidatos:
         print(f"❌ No se generó código de calidad en {max_intentos} intentos")
@@ -637,22 +726,36 @@ def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
     - Estructura básica correcta
     - Sin patrones muy sospechosos
     """
+    debug_info = []  # Para tracking de debug
+    
+    if DEBUG_MODE or lenguaje.lower() in ['java', 'python']:
+        print(f"\n   [DEBUG] Iniciando validación de {lenguaje}...")
+    
     if not codigo or len(codigo.strip()) < 30:  # Reducido de 50 a 30
+        debug_info.append(f"Longitud insuficiente: {len(codigo) if codigo else 0} chars")
+        if lenguaje.lower() in ['java', 'python']:
+            print(f"   [FAIL] Longitud: {debug_info[-1]}")
         return False
     
     # Verificar que no tenga comentarios (ya deberían haberse eliminado)
     if '# NO COMENTARIOS' in codigo or '// NO COMENTARIOS' in codigo:
+        if lenguaje.lower() in ['java', 'python']:
+            print(f"   [FAIL] Contiene marcador NO COMENTARIOS")
         return False
     
     # DETECTAR comentarios excesivos (más de 30% del código son comentarios)
     lineas = codigo.split('\n')
-    lineas_comentario = sum(1 for l in lineas if l.strip().startswith('#'))
+    lineas_comentario = sum(1 for l in lineas if l.strip().startswith('#') or l.strip().startswith('//'))
     if lineas and (lineas_comentario / len(lineas)) > 0.3:
+        if lenguaje.lower() in ['java', 'python']:
+            print(f"   [FAIL] Demasiados comentarios: {lineas_comentario}/{len(lineas)} ({100*lineas_comentario/len(lineas):.0f}%)")
         return False  # Demasiados comentarios
     
     # DETECTAR imports duplicados (patrón sospechoso)
     imports = [l.strip() for l in lineas if l.strip().startswith('import ') or l.strip().startswith('from ')]
     if len(imports) != len(set(imports)):
+        if lenguaje.lower() in ['java', 'python']:
+            print(f"   [FAIL] Imports duplicados: {len(imports)} imports, {len(set(imports))} únicos")
         return False  # Hay imports duplicados
     
     # DETECTAR líneas idénticas repetidas más de 2 veces
@@ -660,38 +763,49 @@ def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
     lineas_no_vacias = [l.strip() for l in lineas if l.strip()]
     contador_lineas = Counter(lineas_no_vacias)
     for linea, count in contador_lineas.items():
+        # EXCLUIR llaves de cierre solas (comunes en Java/C/JS)
+        if linea in ['}', '{', '};', '{ }']:
+            continue  # No contar como repetición
         if count > 2 and len(linea) < 100:  # Línea corta repetida muchas veces
+            if lenguaje.lower() in ['java', 'python']:
+                print(f"   [FAIL] Línea repetida {count} veces: '{linea[:50]}'")
             return False
-    
     # Verificar que no tenga patrones de código malo
     patrones_malos = [
-        '.replace(\\\\n',  # Eliminar saltos de línea es sospechoso
+        '.replace(\\\n',  # Eliminar saltos de línea es sospechoso
         'gen_cal',  # Nombres muy cortos
         'a, m)',  # Parámetros de una letra
-        'c = calendar',  # Variables de una letra
     ]
     
     for patron in patrones_malos:
         if patron in codigo:
+            if lenguaje.lower() in ['java', 'python']:
+                print(f"   [FAIL] Contiene patrón malo: '{patron}'")
             return False
     
     # DETECTAR uso de funciones/métodos privados (_nombre)
     import re
     if re.search(r'\b_[a-zA-Z_]\w*\s*\(', codigo):
-        # Excepciones permitidas: __init__, __main__, __name__
-        if not all(priv in ['__init__', '__main__', '__name__', '__file__'] 
-                   for priv in re.findall(r'__(\w+)__', codigo)):
+        # Excepciones permitidas: __init__, __main__, __name__, __file__
+        metodos_privados = re.findall(r'__\w+__', codigo)
+        if metodos_privados and not all(m in ['__init__', '__main__', '__name__', '__file__'] for m in metodos_privados):
+            if lenguaje.lower() in ['java', 'python']:
+                print(f"   [FAIL] Contiene métodos privados no permitidos: {metodos_privados}")
             return False
     
     # Para Python, verificar estructura básica
     if lenguaje.lower() == 'python':
         # Debe tener al menos un import o def o class
         if not any(kw in codigo for kw in ['import ', 'def ', 'class ']):
+            if lenguaje.lower() == 'python':
+                print(f"   [FAIL] No tiene import/def/class")
             return False
         
         # No debe tener líneas excesivamente largas (>200 chars)
         lineas = codigo.split('\n')
         if any(len(linea) > 200 for linea in lineas):
+            if lenguaje.lower() == 'python':
+                print(f"   [FAIL] Línea demasiado larga (>200 chars)")
             return False
         
         # VERIFICAR COHERENCIA: si tiene imports, debe tener al menos una función/clase
@@ -699,6 +813,8 @@ def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
         tiene_funciones = any('def ' in l or 'class ' in l for l in lineas)
         
         if tiene_imports and not tiene_funciones:
+            if lenguaje.lower() == 'python':
+                print(f"   [FAIL] Tiene imports pero no funciones/clases")
             return False  # Solo imports sin código real
     
     # Para HTML, verificar estructura básica (RELAJADO para Ollama)
@@ -724,7 +840,40 @@ def _es_codigo_de_calidad(codigo: str, lenguaje: str = "Python") -> bool:
     # Para JavaScript/TypeScript
     elif lenguaje.lower() in ['javascript', 'typescript']:
         if not any(kw in codigo for kw in ['function ', 'const ', 'let ', 'var ', 'class ', '=>']):
+            if lenguaje.lower() in ['javascript', 'typescript']:
+                print(f"   [FAIL] No tiene keywords básicas de JS/TS")
             return False
+    
+    # Para Java - VALIDACIÓN MUY RELAJADA
+    elif lenguaje.lower() == 'java':
+        # Verificar que no esté truncado (patrones de corte común)
+        if '<beginofsentence>' in codigo or '\n\n' in codigo:
+            if lenguaje.lower() == 'java':
+                print(f"   [FAIL] Código truncado o incompleto")
+            return False
+        
+        # Debe tener al menos una clase o método
+        if not any(kw in codigo for kw in ['class ', 'public ', 'private ', 'void ', 'static ']):
+            if lenguaje.lower() == 'java':
+                print(f"   [FAIL] No tiene keywords básicas de Java")
+            return False
+        
+        # Verificar que tenga main o métodos
+        tiene_main = 'public static void main' in codigo or 'void main' in codigo
+        tiene_metodos = any(kw in codigo for kw in ['public void', 'private void', 'public String', 'public int', 'private int', 'public double', 'private double'])
+        
+        # RELAJADO: Aceptar si tiene métodos aunque no tenga main
+        if not tiene_metodos:
+            if lenguaje.lower() == 'java':
+                print(f"   [FAIL] No tiene métodos válidos")
+            return False
+        
+        print(f"   [PASS] Código Java válido aceptado (main={tiene_main}, metodos={tiene_metodos})")
+        return True
+    
+    # DEBUG FINAL: Si llegamos aquí sin retornar False, el código debería ser válido
+    if DEBUG_MODE or lenguaje.lower() in ['python', 'html', 'javascript', 'typescript']:
+        print(f"   [PASS] Código {lenguaje} válido aceptado (pasó todas las validaciones)")
     
     return True
 
@@ -792,7 +941,7 @@ def reparar_codigo(codigo: str, analisis: str = "", es_flutter: bool = False, ma
         "- Devuelve SOLO el código completo corregido\n"
         "- NO expliques nada\n"
         "- NO uses texto antes o después\n"
-        "- NO uses markdown (```)\n"
+        "- NO uses markdown (``)\n"
         "- NO uses formato diff\n"
         "- Escribe el código completo directamente\n\n"
         "CÓDIGO A CORREGIR:\n"

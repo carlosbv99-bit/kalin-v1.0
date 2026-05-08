@@ -1,0 +1,36 @@
+{
+  "session_id": "session_1778247747",
+  "messages": [
+    {
+      "role": "user",
+      "content": "dame el codig para un menu desplegable en java",
+      "timestamp": 1778247747.444395,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "\"¡Buenas! Vamos a crear una interfaz gráfica de usuario (GUI) básica con Java Swing. Empecemos por definir la estructura del proyecto y luego discutiremos los pasos para añadir un menú desplegable.\"",
+      "timestamp": 1778247864.4718175,
+      "metadata": {}
+    },
+    {
+      "role": "user",
+      "content": "solo quiero el codigo para un menu desplegable en java",
+      "timestamp": 1778247911.7367918,
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "❌ No se pudo generar código. Verifica el proveedor LLM configurado y el estado del servidor.",
+      "timestamp": 1778248410.298564,
+      "metadata": {}
+    }
+  ],
+  "task_contexts": {},
+  "variables": {},
+  "metadata": {
+    "created_at": "2026-05-08T15:42:27.443266",
+    "last_activity": "2026-05-08T15:53:30.298563",
+    "message_count": 4
+  }
+}

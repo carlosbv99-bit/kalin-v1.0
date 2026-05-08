@@ -70,6 +70,7 @@ class Orchestrator:
         # 4. Construir contexto con conversación
         contexto = construir_contexto(mensaje_sanitizado, estado)
         contexto['conversation'] = self.conversation_manager
+        contexto['conversation_memory'] = self.conversation_memory  # Agregar memoria conversacional
         contexto['security'] = security_manager
         
         # 5. Planificar

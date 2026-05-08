@@ -63,8 +63,8 @@ class ConversationMemory:
             'session_start': datetime.now().isoformat()
         }
         
-        # Cargar memoria previa si existe
-        self._load_session()
+        # DESACTIVADO: No cargar memoria anterior para evitar procesar historial antiguo
+        # self._load_session()
         
         logger.info(f"ConversationMemory initialized: session={self.session_id}")
         
@@ -181,6 +181,12 @@ class ConversationMemory:
             ext = os.path.splitext(file_path)[1].lower()
             if ext:
                 self.current_context["last_created_type"] = ext
+        
+        # Guardar el código generado en el contexto actual para referencias futuras
+        if result and isinstance(result, str):
+            self.current_context["last_generated_code"] = result[:2000]  # Guardar primeros 2000 chars
+            self.current_context["last_generated_code_length"] = len(result)
+            logger.info(f"Saved generated code to context: {len(result)} chars")
     
     def _update_scan_context(self, args: Dict, result: Any):
         """Actualiza contexto después de escanear proyecto"""
@@ -282,6 +288,24 @@ class ConversationMemory:
             if current_project:
                 improved_args["project_path"] = current_project
                 improved_args["inferred_project"] = True
+        
+        # CASO 4: Solicitudes de creación/continuación de código
+        if detected_intention == "create":
+            # Si el usuario dice "continúa", "sigue", "más", etc.
+            continuation_words = ["continúa", "continua", "sigue", "agrega", "añade", "más", "mas"]
+            if any(word in mensaje_lower for word in continuation_words):
+                last_code = self.current_context.get("last_generated_code")
+                if last_code:
+                    improved_args["previous_code"] = last_code
+                    improved_args["is_continuation"] = True
+                    logger.info("Detected code continuation request")
+            
+            # Si menciona un lenguaje específico pero no está en args
+            lenguajes = ["python", "java", "javascript", "typescript", "html", "css", "dart", "flutter"]
+            for lang in lenguajes:
+                if lang in mensaje_lower and not improved_args.get("language"):
+                    improved_args["language"] = lang
+                    break
         
         return improved_args
     
