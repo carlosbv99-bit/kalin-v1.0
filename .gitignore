@@ -84,3 +84,11 @@ env/
 # ❌ PROYECTOS VIEJOS
 # ==============================
 mi_app/
+
+# ==============================
+# ? ARCHIVOS DE OTROS PROYECTOS
+# ==============================
+Agenda.java
+Contacto.java
+Main.java
+*.java
