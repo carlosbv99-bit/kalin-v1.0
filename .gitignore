@@ -7,6 +7,15 @@ __pycache__/
 *.pyd
 *.log
 *.bak
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.eggs/
+*.egg-info/
+dist/
+build/
+*.so
 
 # ==============================
 # 🔐 ENVIRONMENT VARIABLES
@@ -33,12 +42,43 @@ build/
 # 🧾 IDEs
 # ==============================
 .vscode/
+*.swp
+*.swo
+*~
 
 # ==============================
 # 💻 SISTEMA
 # ==============================
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# ==============================
+# 📝 DOCUMENTOS TEMPORALES
+# ==============================
+*.tmp
+*.temp
+*.cache
+*.pid
+*.seed
+*.lock
+
+# ==============================
+# 🗂️ SESSIONS Y LOGS (DATOS LOCALES)
+# ==============================
+sessions/*.json
+logs/*.log
+experience_memory/*.json
+.cache/
+temp/
+
+# ==============================
+# 📦 VIRTUAL ENVIRONMENTS
+# ==============================
+.venv/
+venv/
+ENV/
+env/
 
 # ==============================
 # ❌ PROYECTOS VIEJOS
