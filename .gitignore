@@ -160,3 +160,6 @@ RESUMEN_CORRECCIONES_*.md
 # Scripts temporales
 repair_index.ps1
 clean_index.py
+
+# Changelogs temporales
+CHANGELOG_*.md

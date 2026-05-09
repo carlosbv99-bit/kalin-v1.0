@@ -49,6 +49,16 @@ ULTIMO_FIX = None
 def home():
     return render_template("index.html")
 
+@app.route("/test-sidebar")
+def test_sidebar():
+    """Página de prueba para el menú lateral"""
+    return render_template("test-sidebar.html")
+
+@app.route("/diagnostico-botones")
+def diagnostico_botones():
+    """Página de diagnóstico para botones del sidebar"""
+    return render_template("diagnostico-botones.html")
+
 @app.route("/help")
 def help_page():
     return jsonify({
@@ -474,23 +484,81 @@ def available_models():
     
     # Verificar qué modelos están instalados
     try:
-        from agent.llm.provider_manager import get_manager
-        manager = get_manager()
+        import subprocess
         
         installed_models = []
-        if 'ollama' in manager.providers:
-            ollama_provider = manager.providers['ollama']
-            if hasattr(ollama_provider, 'get_available_models'):
-                installed_models = ollama_provider.get_available_models()
+        
+        # Método principal: Usar comando 'ollama list'
+        try:
+            result = subprocess.run(
+                ['ollama', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')[1:]  # Saltar header
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if parts:
+                            installed_models.append(parts[0])
+            else:
+                print(f"Error ejecutando ollama list: {result.stderr}")
+        except FileNotFoundError:
+            print("Comando 'ollama' no encontrado en PATH")
+        except Exception as e:
+            print(f"Error ejecutando ollama list: {e}")
+        
+        # Método secundario: También intentar vía API para comparar
+        try:
+            from agent.llm.provider_manager import get_manager
+            manager = get_manager()
+            
+            api_models = []
+            if 'ollama' in manager.providers:
+                ollama_provider = manager.providers['ollama']
+                if hasattr(ollama_provider, 'get_available_models'):
+                    try:
+                        api_models = ollama_provider.get_available_models()
+                    except Exception as api_error:
+                        print(f"Error usando API: {api_error}")
+            
+            # Si CLI no encontró nada pero API sí, usar API
+            if not installed_models and api_models:
+                installed_models = api_models
+        except Exception as e:
+            print(f"Error verificando vía API: {e}")
         
         # Marcar modelos instalados
+        installed_count = 0
         for model in recommended:
-            model['installed'] = any(
-                model['name'] in installed or installed in model['name']
-                for installed in installed_models
-            )
+            # Comparación flexible: verificar coincidencia exacta o parcial
+            is_installed = False
+            
+            for installed_model in installed_models:
+                # Coincidencia exacta
+                if model['name'] == installed_model:
+                    is_installed = True
+                    break
+                # Coincidencia sin tag (ej: 'qwen2.5-coder' matches 'qwen2.5-coder:7b')
+                if model['name'].split(':')[0] == installed_model.split(':')[0]:
+                    is_installed = True
+                    break
+                # Coincidencia inversa
+                if installed_model in model['name'] or model['name'] in installed_model:
+                    is_installed = True
+                    break
+            
+            model['installed'] = is_installed
+            if is_installed:
+                installed_count += 1
+        
     except Exception as e:
-        print(f"⚠️ No se pudo verificar modelos instalados: {e}")
+        print(f"⚠️ ERROR al verificar modelos instalados: {e}")
+        import traceback
+        traceback.print_exc()
         for model in recommended:
             model['installed'] = False
     
@@ -640,8 +708,6 @@ def current_model():
         installed_models = []
         model_details = []
         
-        print("🔍 Buscando modelos instalados en Ollama...")
-        
         # Método 1: Usar API de Ollama a través del proveedor
         if 'ollama' in manager.providers:
             ollama_provider = manager.providers['ollama']
@@ -649,18 +715,15 @@ def current_model():
             if hasattr(ollama_provider, 'refresh_models'):
                 try:
                     installed_models = ollama_provider.refresh_models()
-                    print(f"✅ Modelos desde API: {installed_models}")
                 except Exception as e:
-                    print(f"⚠️ Error usando API: {e}")
+                    print(f"Error usando API: {e}")
             elif hasattr(ollama_provider, 'get_available_models'):
                 installed_models = ollama_provider.get_available_models()
-                print(f"✅ Modelos desde cache: {installed_models}")
         else:
-            print("⚠️ Proveedor Ollama no encontrado")
+            print("Proveedor Ollama no encontrado")
         
         # Método 2: Usar CLI de Ollama como respaldo
         try:
-            print("🔍 Verificando con 'ollama list'...")
             result = subprocess.run(
                 ['ollama', 'list'],
                 capture_output=True,
@@ -686,16 +749,10 @@ def current_model():
                             # Agregar a installed_models si no está
                             if model_name not in installed_models:
                                 installed_models.append(model_name)
-                print(f"✅ Modelos detectados desde CLI: {cli_models}")
-            else:
-                print(f"⚠️ Error en CLI: {result.stderr}")
         except FileNotFoundError:
-            print("❌ Comando 'ollama' no encontrado. ¿Está instalado?")
+            print("Comando 'ollama' no encontrado. ¿Está instalado?")
         except Exception as e:
-            print(f"⚠️ Error obteniendo detalles de modelos: {e}")
-        
-        print(f"📊 Total modelos encontrados: {len(installed_models)}")
-        print(f"📊 Modelos: {installed_models}")
+            print(f"Error obteniendo detalles de modelos: {e}")
         
         return jsonify({
             'status': 'success',
@@ -972,6 +1029,51 @@ def read_env_file():
             'message': f'❌ Error al leer .env: {str(e)}'
         }), 500
 
+@app.route("/system/update-env", methods=['POST'])
+def update_env_file():
+    """Actualiza el contenido del archivo .env"""
+    import os
+    
+    try:
+        data = request.get_json()
+        if not data or 'content' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ No se proporcionó contenido para el archivo .env'
+            }), 400
+        
+        env_path = os.path.join(os.getcwd(), '.env')
+        new_content = data['content']
+        
+        # Validar contenido básico (debe contener al menos algunas variables)
+        if not new_content.strip():
+            return jsonify({
+                'status': 'error',
+                'message': '❌ El contenido del archivo está vacío'
+            }), 400
+        
+        # Guardar backup antes de actualizar
+        if os.path.exists(env_path):
+            backup_path = env_path + '.backup'
+            import shutil
+            shutil.copy2(env_path, backup_path)
+        
+        # Escribir nuevo contenido
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        return jsonify({
+            'status': 'success',
+            'message': '✅ Archivo .env actualizado correctamente. Reinicia Kalin para aplicar los cambios.',
+            'path': env_path
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al actualizar .env: {str(e)}'
+        }), 500
+
 # ==============================
 # 📁 UTILS
 # ==============================
@@ -1180,6 +1282,144 @@ def chat():
 
     RUTA_PROYECTO = estado.get("ruta_proyecto", RUTA_PROYECTO)
     ULTIMO_FIX = estado.get("ultimo_fix", ULTIMO_FIX)
+
+# ==============================
+# 📦 EXPERIENCE EXPORT/IMPORT
+# ==============================
+
+@app.route("/experience/export")
+def export_experience():
+    """Exporta la experiencia de Kalin como archivo JSON descargable"""
+    try:
+        from agent.core.experience_memory import ExperienceMemory
+        exp_mem = ExperienceMemory()
+        
+        # Obtener todos los datos de experiencia
+        experience_data = {
+            'experiences': exp_mem.get_all_experiences(),
+            'patterns': exp_mem.get_all_patterns(),
+            'statistics': exp_mem.get_statistics(),
+            'exported_at': datetime.now().isoformat(),
+            'version': '1.0'
+        }
+        
+        # Crear respuesta JSON descargable
+        response = jsonify(experience_data)
+        response.headers['Content-Disposition'] = f'attachment; filename=kalin_experience_{datetime.now().strftime("%Y%m%d")}.json'
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error exportando experiencia: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al exportar experiencia: {str(e)}'
+        }), 500
+
+@app.route("/experience/import", methods=['POST'])
+def import_experience():
+    """Importa experiencia desde un archivo JSON"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ No se proporcionó archivo'
+            }), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({
+                'status': 'error',
+                'message': '❌ Nombre de archivo vacío'
+            }), 400
+        
+        # Leer y parsear JSON
+        import json
+        data = json.load(file)
+        
+        # Validar estructura
+        if 'experiences' not in data and 'patterns' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ Archivo no válido: debe contener experiencias o patrones'
+            }), 400
+        
+        # Importar experiencias
+        from agent.core.experience_memory import ExperienceMemory
+        exp_mem = ExperienceMemory()
+        
+        imported_count = 0
+        if 'experiences' in data:
+            for exp in data['experiences']:
+                exp_mem.add_experience(exp)
+                imported_count += 1
+        
+        if 'patterns' in data:
+            for pattern in data['patterns']:
+                exp_mem.add_pattern(pattern)
+                imported_count += 1
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'✅ Se importaron {imported_count} elementos de experiencia',
+            'imported_count': imported_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error importando experiencia: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al importar experiencia: {str(e)}'
+        }), 500
+
+# ==============================
+# ⚙️ DEPENDENCY MANAGEMENT
+# ==============================
+
+@app.route("/system/install-deps", methods=['POST'])
+def install_deps_quick():
+    """Instala dependencias desde requirements.txt (versión rápida)"""
+    try:
+        import subprocess
+        import sys
+        
+        # Verificar que existe requirements.txt
+        req_file = os.path.join(os.getcwd(), 'requirements.txt')
+        if not os.path.exists(req_file):
+            return jsonify({
+                'status': 'error',
+                'message': '❌ requirements.txt no encontrado'
+            }), 404
+        
+        # Ejecutar pip install
+        result = subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', '-r', req_file],
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minutos timeout
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'status': 'success',
+                'message': '✅ Dependencias instaladas correctamente'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': f'❌ Error instalando dependencias:\n{result.stderr}'
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': '❌ Timeout: La instalación tardó demasiado'
+        }), 500
+    except Exception as e:
+        logger.error(f"Error instalando dependencias: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error: {str(e)}'
+        }), 500
 
 # ==============================
 # 🚀 START

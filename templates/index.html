@@ -562,14 +562,15 @@
         height: 100vh;
         background: #ffffff;
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
-        z-index: 999;
+        z-index: 9999 !important; /* Aumentado para asegurar visibilidad */
         transition: left 0.3s ease;
         overflow-y: auto;
         padding: 20px;
+        border-right: 3px solid red; /* DEBUG: Borde rojo para visibilidad */
       }
 
       .sidebar.open {
-        left: 0;
+        left: 0 !important; /* Forzar posición visible */
       }
 
       .sidebar-header {
@@ -659,7 +660,7 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.3);
-        z-index: 98;
+        z-index: 9998 !important; /* Justo debajo del sidebar (9999) */
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s ease;
@@ -754,6 +755,8 @@
       .model-item:hover {
         background: #f9f9f9;
         border-color: #d0d0d0;
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
 
       .model-item.selected {
@@ -845,16 +848,16 @@
 
   <body>
     <!-- Botón del menú -->
-    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="menu-toggle">☰</button>
 
     <!-- Overlay -->
-    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    <div class="overlay" id="overlay"></div>
 
     <!-- Menú lateral -->
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <span class="sidebar-title">🧠 Memoria de Kalin</span>
-        <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+        <button class="sidebar-close">×</button>
       </div>
 
       <div class="sidebar-section">
@@ -1076,6 +1079,9 @@
     <!-- ===== CARGA DE MÓDULOS MODULARES ===== -->
     <!-- Incluye la nueva arquitectura modular de Kalin AI -->
     <!-- Ver static/js/README.md para documentación -->
+    
+    <!-- 0. Sidebar Functions (PRIORIDAD ALTA - Debe cargar primero) -->
+    <script src="/static/js/sidebar-functions.js?v=2"></script>
     
     <!-- 1. Configuración Centralizada -->
     <script src="/static/js/config.js"></script>
