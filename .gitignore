@@ -156,3 +156,7 @@ RESUMEN_CORRECCIONES_*.md
 .agent_state.json
 
 .agent_state.json
+
+# Scripts temporales
+repair_index.ps1
+clean_index.py
