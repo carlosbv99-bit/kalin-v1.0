@@ -86,9 +86,69 @@ env/
 mi_app/
 
 # ==============================
-# ? ARCHIVOS DE OTROS PROYECTOS
+# ❌ ARCHIVOS DE OTROS PROYECTOS
 # ==============================
 Agenda.java
 Contacto.java
 Main.java
 *.java
+*.dart
+
+# ==============================
+# 🛠️ HERRAMIENTAS INTERNAS DE MANTENIMIENTO
+# (No son parte del producto Kalin AI)
+# ==============================
+clean_disk_space.py
+maintenance.py
+security_audit.py
+check_code_quality.py
+diagnose.py
+diagnose_imports.py
+auto_fix.py
+git_fix.py
+update_names.py
+verify_repairs.py
+crear_readme.py
+generar_pdf.py
+reiniciar_servidor.bat
+test_dependencias.py
+
+# ==============================
+# 📝 DOCUMENTOS DE DESARROLLO PERSONAL
+# (Notas, diagnósticos, correcciones temporales)
+# ==============================
+DIAGNOSTICO_*.md
+FIX_*.md
+CORRECCIONES_*.md
+CAMBIOS_*.md
+IMPLEMENTACION_*.md
+OPTIMIZACION_*.md
+RESUMEN_*.md
+CHECKLIST_*
+INSTRUCCIONES_*.md
+PREPARACION_*.md
+EVALUACION_*.md
+AUDITORIA_*.md
+EXECUTIVE_SUMMARY.md
+REVIEW_SUMMARY.md
+INFORME_*.md
+INFORME_*.pdf
+COMO_*.md
+COMO_*.txt
+GUIA_LINUX_*.md
+TESTING_GUIDE.md
+DEBUG_GUIDE.md
+EXPERIENCE_MEMORY_GUIDE.md
+TEMPERATURAS_*.md
+SOLUCION_*.md
+CODIGO_LIMPIO_*.md
+CONFIGURAR_*.md
+LIMPIEZA_*.md
+ROADMAP_*.md
+ARQUITECTURA_FRONTEND_*.md
+NUEVA_ARQUITECTURA_*.md
+SISTEMA_PROMPTS_*.md
+SISTEMA_MEMORIA_*.md
+INTEGRACION_*.md
+ESCALABILIDAD_*.md
+RESUMEN_CORRECCIONES_*.md

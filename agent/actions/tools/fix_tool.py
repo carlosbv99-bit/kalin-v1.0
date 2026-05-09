@@ -1,10 +1,13 @@
 import re
 import os
 import json
-from typing import List
+from typing import List, Dict
 
 from agent.extractor import extraer_codigo
 from agent.llm.client import generate
+from agent.actions.tools.android_boilerplate import generate_android_boilerplate
+from agent.actions.tools.android_validator import validate_and_format
+from agent.actions.tools.android_error_detector import detect_and_format
 
 # Configuración de debug
 DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
@@ -25,6 +28,56 @@ def extract_code(input_data):
 
     # Si no es JSON, devolver tal cual
     return input_data
+
+
+def validar_codigo_android(lenguaje: str, codigo: str) -> str:
+    """
+    Validar código Android y retornar reporte formateado.
+    
+    Args:
+        lenguaje: 'java', 'kotlin', 'xml', 'manifest'
+        codigo: Código a validar
+        
+    Returns:
+        Reporte de validación formateado
+    """
+    if not codigo:
+        return "❌ No hay código para validar"
+    
+    print(f"🔍 Validando código Android ({lenguaje})...")
+    
+    try:
+        reporte = validate_and_format(lenguaje, codigo)
+        print(f"✅ Validación completada")
+        return reporte
+    except Exception as e:
+        print(f"⚠️ Error en validación: {e}")
+        return f"❌ Error al validar: {str(e)}"
+
+
+def detectar_errores_comunes_android(lenguaje: str, codigo: str) -> str:
+    """
+    Detectar errores comunes en código Android y retornar reporte.
+    
+    Args:
+        lenguaje: 'java', 'kotlin', 'xml'
+        codigo: Código a analizar
+        
+    Returns:
+        Reporte de errores comunes detectados
+    """
+    if not codigo:
+        return "❌ No hay código para analizar"
+    
+    print(f"🔎 Buscando errores comunes en Android ({lenguaje})...")
+    
+    try:
+        reporte = detect_and_format(lenguaje, codigo)
+        print(f"✅ Análisis completado")
+        return reporte
+    except Exception as e:
+        print(f"⚠️ Error en detección: {e}")
+        return f"❌ Error al detectar errores: {str(e)}"
 
 
 def es_chatbot(respuesta: str) -> bool:
@@ -401,6 +454,143 @@ def _seleccionar_mejor(candidatos: List[str]) -> str:
     return puntuados[0][1]
 
 
+def _try_generate_android_boilerplate(requerimiento: str) -> str:
+    """
+    Intenta generar código boilerplate Android si el requerimiento lo indica.
+    
+    Detecta patrones como:
+    - "crea una Activity llamada X"
+    - "genera un Fragment para Y"
+    - "haz un adapter para Z"
+    - "custom view para W"
+    - "service para V"
+    - "broadcast receiver para U"
+    
+    Returns:
+        Código generado o cadena vacía si no aplica
+    """
+    req_lower = requerimiento.lower()
+    
+    # Mapeo de tipos de componentes Android
+    component_mapping = {
+        'activity': 'activity',
+        'actividad': 'activity',
+        'fragment': 'fragment',
+        'adapter': 'adapter',
+        'adaptador': 'adapter',
+        'recyclerview': 'adapter',
+        'recycler view': 'adapter',
+        'custom view': 'custom_view',
+        'vista personalizada': 'custom_view',
+        'view personalizado': 'custom_view',
+        'service': 'service',
+        'servicio': 'service',
+        'background service': 'service',
+        'broadcast receiver': 'broadcast_receiver',
+        'receiver': 'broadcast_receiver',
+        'receptor': 'broadcast_receiver',
+    }
+    
+    # Buscar tipo de componente
+    component_type = None
+    for keyword, ctype in component_mapping.items():
+        if keyword in req_lower:
+            component_type = ctype
+            break
+    
+    if not component_type:
+        return ""
+    
+    # Extraer nombre del componente (palabra después de "llamada", "named", etc.)
+    name_patterns = [
+        r'llamada\s+(\w+)',
+        r'named\s+(\w+)',
+        r'llamado\s+(\w+)',
+        r'con nombre\s+(\w+)',
+        r'para\s+(\w+)',
+    ]
+    
+    component_name = None
+    for pattern in name_patterns:
+        match = re.search(pattern, req_lower)
+        if match:
+            # Capitalizar primera letra
+            name = match.group(1).capitalize()
+            # Si ya tiene mayúsculas, usar tal cual
+            if any(c.isupper() for c in match.group(1)):
+                name = match.group(1)
+            component_name = name
+            break
+    
+    # Si no se encontró nombre, usar uno genérico
+    if not component_name:
+        # Extraer última palabra significativa
+        words = req_lower.split()
+        significant_words = [w for w in words if len(w) > 3 and w not in ['para', 'una', 'uno', 'con', 'del', 'las', 'los']]
+        if significant_words:
+            component_name = significant_words[-1].capitalize()
+        else:
+            component_name = f"My{component_type.title().replace('_', '')}"
+    
+    # Limpiar nombre (quitar caracteres especiales)
+    component_name = re.sub(r'[^a-zA-Z0-9]', '', component_name)
+    
+    try:
+        print(f"🔧 Generando boilerplate Android: {component_type} -> {component_name}")
+        files = generate_android_boilerplate(component_type, component_name)
+        
+        # VALIDAR cada archivo generado
+        validation_reports = []
+        error_detection_reports = []
+        validated_files = []
+        
+        for filename, content in files.items():
+            # Determinar tipo de archivo
+            if filename.endswith('.java'):
+                lang = 'java'
+            elif filename.endswith('.kt'):
+                lang = 'kotlin'
+            elif filename.endswith('.xml') and 'layout' in filename:
+                lang = 'xml'
+            elif 'manifest' in filename.lower():
+                lang = 'manifest'
+            else:
+                lang = None
+            
+            # Validar si es un tipo soportado
+            if lang:
+                # 1. Validación de sintaxis
+                report = validate_and_format(lang, content, filename)
+                validation_reports.append(report)
+                
+                # 2. Detección de errores comunes (solo para java/kotlin/xml)
+                if lang in ['java', 'kotlin', 'xml']:
+                    error_report = detect_and_format(lang, content, filename)
+                    error_detection_reports.append(error_report)
+            
+            validated_files.append(f"// Archivo: {filename}\n{content}")
+        
+        # Agregar reportes de validación al final
+        if validation_reports:
+            validated_files.append("\n" + "="*80)
+            validated_files.append("📊 REPORTE DE VALIDACIÓN ANDROID")
+            validated_files.append("="*80)
+            validated_files.extend(validation_reports)
+        
+        # Agregar reportes de detección de errores comunes
+        if error_detection_reports:
+            validated_files.append("\n" + "="*80)
+            validated_files.append("🔍 ANÁLISIS DE ERRORES COMUNES")
+            validated_files.append("="*80)
+            validated_files.extend(error_detection_reports)
+        
+        return "\n\n".join(validated_files)
+    
+    except Exception as e:
+        print(f"⚠️ Error generando boilerplate Android: {e}")
+        return ""
+
+
 def generar_codigo(requerimiento: str, max_intentos: int = 3) -> str:
     """
     Genera código con validación y reintentos automáticos.
@@ -414,6 +604,12 @@ def generar_codigo(requerimiento: str, max_intentos: int = 3) -> str:
     """
     if not requerimiento:
         return ""
+
+    # PRIMERO: Verificar si es una solicitud de componente Android
+    android_result = _try_generate_android_boilerplate(requerimiento)
+    if android_result:
+        print(f"✅ Usando boilerplate Android para: {requerimiento}")
+        return android_result
 
     # Detectar lenguaje de programación solicitado
     lenguajes_posibles = {
@@ -492,7 +688,10 @@ IMPORTANTE PARA HTML:
 - NO uses comentarios HTML (<!-- -->)
 - INCLUYE CSS COMPLETO y PROFESIONAL en <style>
 - Usa estructura semántica correcta
-- Diseño responsive y moderno"""
+- Diseño responsive y moderno
+- GENERA SOLO CÓDIGO, NUNCA respondas como chat
+- Si el usuario pide "agregar X", MODIFICA el código anterior incluyendo el nuevo elemento
+- NUNCA hagas preguntas como "¿dónde quieres el botón?" - DECIDE TÚ la mejor ubicación"""
     elif lenguaje == 'JavaScript':
         ejemplo_bueno = """class UserManager {
     constructor() {
@@ -617,6 +816,8 @@ REGLAS ABSOLUTAS (VIOLAR CUALQUIERA = FRACASO):
 8. El código DEBE empezar en la PRIMERA línea con estructura de {lenguaje}
 9. NUNCA agregues texto antes o después del código
 10. Si no puedes cumplir estas reglas, devuelve cadena vacía
+11. NO seas conversacional - Eres un GENERADOR DE CÓDIGO, no un asistente de chat
+12. Si el requerimiento es ambiguo, TOMA DECISIONES RAZONABLES y genera código
 
 INSTRUCCIONES IMPORTANTES:
 - Analiza el REQUERIMIENTO del usuario cuidadosamente

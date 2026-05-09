@@ -121,9 +121,9 @@ class ConversationMemory:
             "interaction_count": self.metrics['total_interactions']
         })
         
-        # Auto-guardar cada 5 interacciones
-        if self.metrics['total_interactions'] % 5 == 0:
-            self.save_to_file()
+        # DESACTIVADO: Auto-guardar deshabilitado para evitar acumulación de historial
+        # if self.metrics['total_interactions'] % 5 == 0:
+        #     self.save_to_file()
     
     def _update_analyze_context(self, args: Dict, result: Any):
         """Actualiza contexto después de analizar un archivo"""

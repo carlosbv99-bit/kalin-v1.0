@@ -116,6 +116,21 @@ class StateManager:
         """Obtiene el último código generado"""
         return self.memory.get("ultimo_codigo_generado")
     
+    def set_dependencias_pendientes(self, dependencias: list):
+        """Guarda lista de dependencias pendientes de instalación"""
+        self.memory["dependencias_pendientes"] = dependencias
+        self.guardar()
+    
+    def get_dependencias_pendientes(self) -> Optional[list]:
+        """Obtiene dependencias pendientes de instalación"""
+        return self.memory.get("dependencias_pendientes", [])
+    
+    def clear_dependencias_pendientes(self):
+        """Limpia la lista de dependencias pendientes"""
+        if "dependencias_pendientes" in self.memory:
+            del self.memory["dependencias_pendientes"]
+            self.guardar()
+    
     def get_stats(self) -> Dict[str, int]:
         """Obtiene estadísticas de éxitos y fallos"""
         return {

@@ -255,6 +255,74 @@ def install_dependencies():
             'message': f'❌ Error: {str(e)}'
         }), 500
 
+@app.route("/system/check-pending-deps")
+def check_pending_deps():
+    """Verifica dependencias Python pendientes de instalación"""
+    from agent.core.state_manager import StateManager
+    from agent.actions.tools.install_dependencies import detectar_dependencias_desde_codigo
+    
+    try:
+        state_manager = StateManager()
+        codigo = state_manager.get_ultimo_codigo_generado()
+        
+        if not codigo:
+            return jsonify({
+                'status': 'success',
+                'pending': [],
+                'message': 'No hay código reciente'
+            })
+        
+        # Detectar dependencias
+        dependencias = detectar_dependencias_desde_codigo(codigo)
+        
+        # Verificar cuáles faltan
+        from agent.actions.tools.install_dependencies import verificar_dependencia
+        faltantes = [dep for dep in dependencias if not verificar_dependencia(dep)]
+        
+        return jsonify({
+            'status': 'success',
+            'pending': faltantes,
+            'all_detected': dependencias
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route("/system/install-pending-deps", methods=['POST'])
+def install_pending_deps():
+    """Instala dependencias Python pendientes"""
+    from agent.core.state_manager import StateManager
+    from agent.actions.tools.install_dependencies import instalar_multiples_dependencias
+    
+    try:
+        state_manager = StateManager()
+        dependencias = state_manager.get_dependencias_pendientes()
+        
+        if not dependencias:
+            return jsonify({
+                'status': 'error',
+                'message': 'No hay dependencias pendientes'
+            }), 400
+        
+        # Instalar dependencias
+        resultados = instalar_multiples_dependencias(dependencias)
+        
+        # Limpiar dependencias pendientes
+        state_manager.clear_dependencias_pendientes()
+        
+        return jsonify({
+            'status': 'success',
+            'results': resultados,
+            'message': f'Instalación completada: {len(resultados)} paquetes'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 @app.route("/system/download-models", methods=['POST'])
 def download_models():
     """Descarga los modelos seleccionados de Ollama"""

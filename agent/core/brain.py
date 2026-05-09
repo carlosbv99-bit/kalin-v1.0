@@ -206,9 +206,28 @@ def detectar_intencion(mensaje: str) -> str:
         "app de", "aplicación de", "sistema de",
         # Tipos específicos de aplicaciones
         "agenda personal", "gestor de tareas", "lista de contactos",
-        "base de datos", "crud", "sistema de gestión"
+        "base de datos", "crud", "sistema de gestión",
+        # SOLICITUDES DE CÓDIGO EN LENGUAJES ESPECÍFICOS (prioridad ALTA)
+        "en java", "en python", "en html", "en javascript",
+        "en css", "en typescript", "en c++", "en c#",
+        "en dart", "en ruby", "en php", "en go",
+        "en rust", "en kotlin", "en swift"
     ]):
         return "create"
+
+    # Install dependencies - instalar dependencias Python
+    if any(frase in m for frase in [
+        "instala dependencias", "instalar dependencias",
+        "dependencias faltantes", "qué dependencias",
+        "pip install", "instala los paquetes",
+        "instalar paquetes", "dependencias de python",
+        "bibliotecas necesarias", "librerías necesarias",
+        "sí", "instalar"  # Para confirmar instalación
+    ]):
+        # Si es solo "sí" o "instalar", verificar si hay dependencias pendientes
+        if m.strip() in ["sí", "si", "instalar", "instala"]:
+            return "confirm_install"
+        return "install_deps"
 
     # Refactor - mejorar código
     if any(palabra in m for palabra in [

@@ -31,14 +31,14 @@
         z-index: 100;
       }
 
-      /* ===== NUEVO LAYOUT: Chat derecha, Código centro ===== */
+      /* ===== NUEVO LAYOUT: Código izquierda, Preview centro, Chat derecha ===== */
       .main-layout {
         display: flex;
         flex: 1;
         overflow: hidden;
       }
 
-      /* Área de código (centro) - 65% */
+      /* Área de código (izquierda) - 50% */
       .code-area {
         flex: 1;
         background: #f8f9fa;
@@ -46,14 +46,163 @@
         padding: 20px;
         display: flex;
         flex-direction: column;
+        border-right: none; /* Eliminado borde - ahora usa resizer */
       }
 
-      /* Área de chat (derecha) - 35% */
+      /* Área de preview (centro) - 25% */
+      .preview-area {
+        width: 25%;
+        min-width: 300px;
+        background: #ffffff;
+        border-right: none; /* Eliminado borde - ahora usa resizer */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .preview-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e5e5;
+        background: #fafafa;
+        font-weight: 600;
+        font-size: 13px;
+        color: #666;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .security-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        background: #d4edda;
+        color: #155724;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .preview-toggle {
+        padding: 4px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+
+      .preview-toggle:hover {
+        background: #f0f0f0;
+      }
+
+      .preview-toggle.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+      }
+
+      .preview-content {
+        flex: 1;
+        overflow: auto;
+        padding: 0;
+        background: white;
+      }
+
+      .preview-content iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        /* SANDBOX SEGURO */
+        sandbox="allow-scripts allow-same-origin";
+      }
+
+      .preview-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #999;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .preview-placeholder-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.3;
+      }
+
+      .preview-placeholder-text {
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+
+      .preview-placeholder-subtext {
+        font-size: 12px;
+        color: #bbb;
+      }
+
+      /* ===== RESIZERS v3 - Barras de redimensión ultra finas (1px) ===== */
+      .panel-resizer {
+        width: 1px !important;
+        background: #e8e8e8 !important;
+        cursor: col-resize;
+        transition: all 0.15s ease;
+        position: relative;
+        z-index: 10;
+        flex-shrink: 0;
+      }
+
+      .panel-resizer:hover {
+        background: #4a9eff !important;
+        width: 2px !important;
+      }
+
+      .panel-resizer.active {
+        background: #0066ff !important;
+        width: 2px !important;
+      }
+
+      /* Indicador visual muy sutil en el centro del resizer */
+      .panel-resizer::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 1px;
+        height: 25px;
+        background: #ccc;
+        border-radius: 1px;
+        opacity: 0.4;
+      }
+
+      .panel-resizer:hover::after {
+        background: white;
+        opacity: 0.9;
+        height: 35px;
+      }
+
+      /* Cursor durante resize */
+      body.resizing {
+        cursor: col-resize !important;
+        user-select: none;
+      }
+
+      body.resizing * {
+        cursor: col-resize !important;
+        user-select: none !important;
+      }
+
+      /* Área de chat (derecha) - 25% */
       .chat-sidebar {
-        width: 35%;
-        min-width: 380px;
-        max-width: 500px;
-        border-left: 2px solid #e5e5e5;
+        width: 25%;
+        min-width: 300px;
+        max-width: 450px;
         background: #ffffff;
         display: flex;
         flex-direction: column;
@@ -757,6 +906,34 @@
       </div>
 
       <div class="sidebar-section">
+        <div class="sidebar-section-title">Gestión de Dependencias Python</div>
+        
+        <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            <input type="checkbox" id="auto-deps-toggle" onchange="toggleAutoDependencies()" style="width: 18px; height: 18px; cursor: pointer;">
+            <span>Activar detección automática</span>
+          </label>
+          <div style="margin-top: 8px; font-size: 12px; color: #666; line-height: 1.5;">
+            Cuando está activado, Kalin detectará automáticamente las dependencias necesarias después de generar código Python y te ofrecerá instalarlas.
+          </div>
+        </div>
+        
+        <button class="sidebar-btn" onclick="checkPendingDependencies()">
+          <span class="sidebar-btn-icon">🔍</span>
+          <span>Verificar dependencias pendientes</span>
+        </button>
+        
+        <button class="sidebar-btn" onclick="installPendingDependencies()">
+          <span class="sidebar-btn-icon">⚙️</span>
+          <span>Instalar dependencias pendientes</span>
+        </button>
+        
+        <div class="sidebar-info">
+          Controla cómo Kalin gestiona las bibliotecas externas de Python (numpy, matplotlib, etc.)
+        </div>
+      </div>
+
+      <div class="sidebar-section">
         <div class="sidebar-section-title">Instalación Manual</div>
         
         <button class="sidebar-btn" onclick="checkDependencies()">
@@ -844,9 +1021,38 @@
         🤖 Cargando modelo...
     </div>
 
-    <!-- LAYOUT: Chat izquierda, Código centro -->
+    <!-- LAYOUT: Código izquierda, Preview centro, Chat derecha -->
     <div class="main-layout">
-      <!-- Chat (izquierda) -->
+      <!-- Código (izquierda) -->
+      <div class="code-area" id="code-area">
+        <div class="code-placeholder" id="code-placeholder">
+          <div class="code-placeholder-icon">💻</div>
+          <div class="code-placeholder-text">El código generado aparecerá aquí</div>
+          <div class="code-placeholder-subtext">Pide a Kalin que cree algo</div>
+        </div>
+        <div id="code-display-container" style="display: none;"></div>
+      </div>
+
+      <!-- Preview/Renderizado (centro) -->
+      <div class="preview-area" id="preview-area">
+        <div class="preview-header">
+          <div>
+            <span>👁️ Preview</span>
+            <span class="security-badge" title="Sandbox activo con CSP estricta">🔒 Seguro</span>
+          </div>
+          <button class="preview-toggle" id="preview-toggle" onclick="togglePreview()">Activar</button>
+        </div>
+        <div class="preview-content" id="preview-content">
+          <div class="preview-placeholder" id="preview-placeholder">
+            <div class="preview-placeholder-icon">🌐</div>
+            <div class="preview-placeholder-text">El preview aparecerá aquí</div>
+            <div class="preview-placeholder-subtext">Genera código HTML/CSS/JS para ver el resultado</div>
+          </div>
+          <iframe id="preview-frame" style="display: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+      </div>
+
+      <!-- Chat (derecha) -->
       <div class="chat-sidebar">
         <div class="chat-header">💬 Chat con Kalin</div>
         
@@ -865,1219 +1071,35 @@
           </div>
         </div>
       </div>
-
-      <!-- Código (centro/principal) -->
-      <div class="code-area" id="code-area">
-        <div class="code-placeholder" id="code-placeholder">
-          <div class="code-placeholder-icon">💻</div>
-          <div class="code-placeholder-text">El código generado aparecerá aquí</div>
-          <div class="code-placeholder-subtext">Pide a Kalin que cree algo</div>
-        </div>
-        <div id="code-display-container" style="display: none;"></div>
-      </div>
     </div>
 
-    <script>
-      function updateActiveModelIndicator() {
-        // Cargar el modelo activo y mostrarlo en el header
-        fetch('/system/current-model')
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var indicator = document.getElementById('active-model-indicator');
-              if (indicator && data.current_model) {
-                indicator.textContent = '🤖 ' + data.current_model;
-                indicator.title = 'Modelo de IA activo: ' + data.current_model;
-              }
-            }
-          })
-          .catch(function(error) {
-            console.error('Error cargando modelo activo:', error);
-          });
-      }
+    <!-- ===== CARGA DE MÓDULOS MODULARES ===== -->
+    <!-- Incluye la nueva arquitectura modular de Kalin AI -->
+    <!-- Ver static/js/README.md para documentación -->
+    
+    <!-- 1. Configuración Centralizada -->
+    <script src="/static/js/config.js"></script>
+    
+    <!-- 2. UI Manager (manejo de interfaz y sidebar) -->
+    <script src="/static/js/ui-manager.js"></script>
+    
+    <!-- 3. Módulo de Preview (renderizado seguro) -->
+    <script src="/static/js/preview.js"></script>
+    
+    <!-- 4. Módulo de Chat (comunicación backend) -->
+    <script src="/static/js/chat.js"></script>
+    
+    <!-- 5. Utilidades Android (soporte desarrollo móvil) -->
+    <script src="/static/js/android-utils.js"></script>
+    
+    <!-- 6. Paneles Redimensionables (ajuste de tamaños) -->
+    <script src="/static/js/resizable-panels.js"></script>
+    
+    <!-- 7. Aplicación Principal (coordina todos los módulos) -->
+    <script src="/static/js/app.js"></script>
+    
+    <!-- 8. Compatibilidad Legacy (mantiene funciones existentes temporalmente) -->
+    <script src="/static/js/legacy-compat.js"></script>
 
-      // Cargar modelo activo al iniciar la página
-      window.addEventListener('load', function() {
-        updateActiveModelIndicator();
-      });
-
-      var recognition = null;
-      var isRecording = false;
-      // DESACTIVADO: No usar session_id persistente para evitar cargar historial antiguo
-      // var currentSessionId = null;
-
-      if (
-        "webkitSpeechRecognition" in window ||
-        "SpeechRecognition" in window
-      ) {
-        var SpeechRecognition =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = "es-ES";
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onresult = function (event) {
-          var transcript = event.results[0][0].transcript;
-          var input = document.getElementById("chat-input");
-          if (input) {
-            input.value = transcript;
-            stopRecording();
-            updateButton();
-          }
-        };
-
-        recognition.onerror = function (event) {
-          console.error("Error de voz:", event.error);
-          stopRecording();
-        };
-
-        recognition.onend = function () {
-          stopRecording();
-        };
-      } else {
-        document.getElementById("mic-btn").style.display = "none";
-      }
-
-      function handleKeyPress(event) {
-        if (event.key === "Enter") {
-          sendMessage();
-        }
-      }
-
-      function sendMessage() {
-        var input = document.getElementById("chat-input");
-        if (!input) {
-          console.error('❌ Input chat-input not found!');
-          return;
-        }
-        
-        var message = input.value.trim();
-
-        if (!message) {
-          return;
-        }
-
-        addMessage(message, "user");
-        input.value = "";
-        updateButton();
-
-        // Preparar datos SIN session_id (nueva sesión cada vez)
-        var requestData = { mensaje: message };
-        // DESACTIVADO: No enviar session_id para evitar cargar historial
-        // if (currentSessionId) {
-        //   requestData.session_id = currentSessionId;
-        // }
-
-        // Usar ruta relativa en lugar de URL absoluta para evitar problemas de CORS
-        fetch("/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestData),
-        })
-          .then(function (response) {
-            return response.json();
-          })
-          .then(function (data) {
-            // DESACTIVADO: No guardar session_id
-            // if (data.session_id) {
-            //   currentSessionId = data.session_id;
-            //   console.log('📝 Session ID:', currentSessionId);
-            // }
-            
-            var text = data.respuesta || "Sin respuesta";
-            addMessage(text, "bot");
-          })
-          .catch(function (error) {
-            addMessage("Error: " + error.message, "bot");
-          });
-      }
-
-      function updateButton() {
-        var input = document.getElementById("chat-input");
-        var btn = document.getElementById("send-btn");
-        if (input && btn) {
-          btn.disabled = !input.value.trim();
-        }
-      }
-
-      function addMessage(text, sender) {
-        var container = document.getElementById("chat-messages");
-        if (!container) {
-          console.error('❌ Container chat-messages not found!');
-          return;
-        }
-        
-        var div = document.createElement("div");
-        div.className = "message " + sender;
-        
-        // Si es un mensaje del bot con código, NO mostrar el código en el chat
-        // Solo mostrar un mensaje indicando que está en el panel central
-        if (sender === 'bot' && text.includes('```')) {
-          // Extraer solo el texto sin código para el chat
-          var textWithoutCode = text.replace(/```(\w+)?\n([\s\S]*?)```/g, '[Código generado - Ver panel central]');
-          
-          var html = textWithoutCode
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
-          
-          div.innerHTML = html;
-          container.appendChild(div);
-          
-          // Mostrar el código SOLO en el área central
-          displayCodeInMainArea(text);
-        } else {
-          // Mensaje normal sin código - mostrar normalmente
-          var html = text
-            .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
-          
-          div.innerHTML = html;
-          container.appendChild(div);
-          
-          // Agregar números de línea a los bloques de código en el chat (si hay)
-          addLineNumbers(div);
-        }
-        
-        // Scroll al final del chat
-        container.scrollTop = container.scrollHeight;
-      }
-
-      function displayCodeInMainArea(text) {
-        // Extraer código de los bloques markdown
-        var regex = /```(\w+)?\n([\s\S]*?)```/g;
-        var match = regex.exec(text);
-        
-        if (!match) return;
-        
-        var language = match[1] || 'code';
-        var code = match[2];
-        
-        var placeholder = document.getElementById('code-placeholder');
-        var container = document.getElementById('code-display-container');
-        
-        if (!container) return;
-        
-        // Ocultar placeholder
-        if (placeholder) {
-          placeholder.style.display = 'none';
-        }
-        
-        // Mostrar contenedor
-        container.style.display = 'block';
-        
-        // Crear display de código
-        var codeDisplay = document.createElement('div');
-        codeDisplay.className = 'code-display';
-        
-        var header = document.createElement('div');
-        header.className = 'code-display-header';
-        header.textContent = '✅ Código ' + language.toUpperCase() + ' generado';
-        
-        var body = document.createElement('div');
-        body.className = 'code-display-body';
-        
-        var pre = document.createElement('pre');
-        var codeElement = document.createElement('code');
-        codeElement.textContent = code;
-        
-        pre.appendChild(codeElement);
-        body.appendChild(pre);
-        codeDisplay.appendChild(header);
-        codeDisplay.appendChild(body);
-        
-        // Limpiar y agregar
-        container.innerHTML = '';
-        container.appendChild(codeDisplay);
-        
-        // Agregar números de línea al código principal
-        addLineNumbers(codeDisplay);
-      }
-
-      function addLineNumbers(messageDiv) {
-        console.log('🔍 Buscando bloques de código para agregar números...');
-              
-        // Buscar todos los bloques pre en el mensaje
-        var preBlocks = messageDiv.querySelectorAll('pre');
-        console.log('📊 Bloques <pre> encontrados:', preBlocks.length);
-              
-        preBlocks.forEach(function(pre, index) {
-          console.log('Procesando bloque', index + 1);
-                
-          // Verificar si ya tiene números de línea
-          if (pre.querySelector('.code-line-numbers')) {
-            console.log('⚠️ Ya tiene números, saltando');
-            return; // Ya tiene, saltar
-          }
-                
-          var code = pre.querySelector('code');
-          if (!code) {
-            console.log('❌ No hay elemento <code>');
-            return;
-          }
-                
-          // Obtener el contenido del código
-          var codeText = code.textContent;
-          console.log('📝 Longitud del código:', codeText.length);
-                
-          var lines = codeText.split('\n');
-          console.log(' Número de líneas:', lines.length);
-                
-          // Crear contenedor de números de línea
-          var lineNumbers = document.createElement('div');
-          lineNumbers.className = 'code-line-numbers';
-                
-          // Generar números con <br> para saltos de línea
-          var numbersHtml = '';
-          for (var i = 1; i <= lines.length; i++) {
-            numbersHtml += i + '<br>';
-          }
-          lineNumbers.innerHTML = numbersHtml;
-                
-          console.log('✅ Insertando números de línea');
-                
-          // Insertar antes del code
-          pre.insertBefore(lineNumbers, code);
-        });
-              
-        console.log('✅ Proceso completado');
-      }
-
-
-      function toggleMic() {
-        if (!recognition) {
-          alert(
-            "Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.",
-          );
-          return;
-        }
-
-        if (isRecording) {
-          recognition.stop();
-        } else {
-          recognition.start();
-          startRecording();
-        }
-      }
-
-      function startRecording() {
-        isRecording = true;
-        var btn = document.getElementById("mic-btn");
-        btn.style.background = "#ef4444";
-        btn.style.color = "#ffffff";
-        btn.innerHTML = "⏹";
-      }
-
-      function stopRecording() {
-        isRecording = false;
-        var btn = document.getElementById("mic-btn");
-        btn.style.background = "transparent";
-        btn.style.color = "#6e6e80";
-        btn.innerHTML = "🎤";
-      }
-
-      function hideWelcomeScreen() {
-        var welcome = document.getElementById("welcome-screen");
-        if (welcome && !welcome.classList.contains("hidden")) {
-          welcome.classList.add("hidden");
-        }
-      }
-
-      // Funciones del menú lateral
-      function toggleSidebar() {
-        console.log('=== TOGGLE SIDEBAR CALLED ===');
-        var sidebar = document.getElementById("sidebar");
-        var overlay = document.getElementById("overlay");
-        console.log('Sidebar element:', sidebar);
-        console.log('Overlay element:', overlay);
-        
-        if (!sidebar || !overlay) {
-          console.error('❌ Sidebar or Overlay not found!');
-          alert('Error: No se encontró el menú lateral. Por favor, recarga la página (Ctrl+F5).');
-          return;
-        }
-        
-        console.log('Before toggle - Sidebar classes:', sidebar.classList.toString());
-        console.log('Before toggle - Overlay classes:', overlay.classList.toString());
-        
-        sidebar.classList.toggle("open");
-        overlay.classList.toggle("show");
-        
-        console.log('After toggle - Sidebar classes:', sidebar.classList.toString());
-        console.log('After toggle - Overlay classes:', overlay.classList.toString());
-        console.log('After toggle - Sidebar left position:', window.getComputedStyle(sidebar).left);
-        console.log('=== END TOGGLE ===');
-      }
-
-      function exportExperience() {
-        // Cerrar el menú
-        toggleSidebar();
-        
-        // Enviar mensaje al backend
-        var input = document.getElementById("chat-input");
-        if (input) {
-          input.value = "exportar experiencia";
-          sendMessage();
-        }
-      }
-
-      function importExperience() {
-        // Cerrar el menú
-        toggleSidebar();
-        
-        // Mostrar diálogo para seleccionar archivo
-        var filePath = prompt("Ingresa la ruta del archivo de experiencia:\n\nEjemplo: E:\\downloads\\kalin_experience_20260507.json");
-        
-        if (filePath && filePath.trim()) {
-          // Enviar mensaje al backend con la ruta
-          var input = document.getElementById("chat-input");
-          if (input) {
-            input.value = "importar experiencia " + filePath;
-            sendMessage();
-          }
-        }
-      }
-
-      function checkDependencies() {
-        // Cerrar el menú
-        toggleSidebar();
-        
-        // Mostrar mensaje de verificación
-        addMessage("🔍 Verificando dependencias del sistema...", "user");
-        
-        // Llamar al endpoint de verificación
-        fetch("/system/check-dependencies")
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var results = data.results;
-              var message = "📊 **Estado del Sistema**\n\n";
-              
-              // Python
-              message += results.python ? "✅ **Python**: Instalado\n" : "❌ **Python**: No encontrado\n";
-              if (results.python_version) {
-                message += "   Versión: " + results.python_version + "\n";
-              }
-              message += "\n";
-              
-              // Pip
-              message += results.pip ? "✅ **pip**: Instalado\n" : "❌ **pip**: No encontrado\n";
-              message += "\n";
-              
-              // Flask
-              message += results.flask ? "✅ **Flask**: Instalado\n" : "❌ **Flask**: No instalado\n";
-              if (results.flask_version) {
-                message += "   Versión: " + results.flask_version + "\n";
-              }
-              message += "\n";
-              
-              // Ollama
-              message += results.ollama ? "✅ **Ollama**: Instalado y funcionando\n" : "❌ **Ollama**: No encontrado\n";
-              if (results.models && results.models.length > 0) {
-                message += "   Modelos instalados:\n";
-                results.models.forEach(function(model) {
-                  message += "   • " + model + "\n";
-                });
-              } else if (results.ollama) {
-                message += "   ⚠️  No hay modelos descargados. Ejecuta:\n";
-                message += "   `ollama pull deepseek-coder:6.7b`\n";
-              }
-              message += "\n";
-              
-              // Paquetes
-              message += "📦 **Paquetes Python**:\n";
-              results.packages.forEach(function(pkg) {
-                message += pkg.installed ? "✅ " : "❌ ";
-                message += pkg.name + "\n";
-              });
-              
-              // Recomendaciones
-              message += "\n💡 **Recomendaciones**:\n";
-              if (!results.ollama) {
-                message += "1. Instala Ollama desde ollama.com\n";
-                message += "2. Ejecuta: `ollama serve`\n";
-                message += "3. Descarga modelos: `ollama pull deepseek-coder:6.7b`\n";
-              } else if (!results.models || results.models.length === 0) {
-                message += "1. Descarga modelos: `ollama pull deepseek-coder:6.7b`\n";
-              }
-              
-              if (!results.flask || !results.pip) {
-                message += "\n2. Instala dependencias:\n";
-                message += "```bash\npip install -r requirements.txt\n```";
-              }
-              
-              addMessage(message, "bot");
-            } else {
-              addMessage("❌ Error al verificar dependencias", "bot");
-            }
-          })
-          .catch(function(error) {
-            addMessage("❌ Error: " + error.message, "bot");
-          });
-      }
-
-      function installDependencies() {
-        // Cerrar el menú
-        toggleSidebar();
-        
-        // Confirmación
-        if (!confirm("¿Instalar todas las dependencias de requirements.txt?\n\nEsto puede tardar varios minutos.")) {
-          return;
-        }
-        
-        addMessage("⚙️ Instalando dependencias... Esto puede tardar unos minutos.", "user");
-        
-        fetch("/system/install-dependencies", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var message = "✅ **Dependencias instaladas correctamente**\n\n";
-              message += "Todas las librerías necesarias han sido instaladas.\n\n";
-              message += "💡 **Próximos pasos:**\n";
-              message += "1. Verifica que Ollama esté instalado\n";
-              message += "2. Descarga los modelos recomendados\n";
-              message += "3. Reinicia Kalin si es necesario";
-              addMessage(message, "bot");
-            } else {
-              var message = "❌ **Error al instalar dependencias**\n\n";
-              message += data.message + "\n\n";
-              if (data.error) {
-                message += "**Detalles del error:**\n```\n" + data.error + "\n```";
-              }
-              addMessage(message, "bot");
-            }
-          })
-          .catch(function(error) {
-            addMessage("❌ Error: " + error.message, "bot");
-          });
-      }
-
-      function createVenv() {
-        // Cerrar el menú
-        toggleSidebar();
-        
-        // Confirmación
-        if (!confirm("¿Crear un entorno virtual de Python en la carpeta .venv?\n\nEsto aislará las dependencias de Kalin del sistema.")) {
-          return;
-        }
-        
-        addMessage("📦 Creando entorno virtual...", "user");
-        
-        fetch("/system/create-venv", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              addMessage(data.message, "bot");
-            } else if (data.status === 'warning') {
-              addMessage(data.message, "bot");
-            } else {
-              var message = "❌ **Error al crear entorno virtual**\n\n";
-              message += data.message;
-              if (data.error) {
-                message += "\n\n**Detalles:**\n```\n" + data.error + "\n```";
-              }
-              addMessage(message, "bot");
-            }
-          })
-          .catch(function(error) {
-            addMessage("❌ Error: " + error.message, "bot");
-          });
-      }
-
-      function downloadModels() {
-        // Cerrar el menú lateral
-        toggleSidebar();
-        
-        // Abrir modal de selección
-        openModelModal();
-      }
-
-      function selectActiveModel() {
-        // Cerrar el menú lateral
-        toggleSidebar();
-        
-        // Abrir modal de selección de modelo activo
-        openActiveModelModal();
-      }
-
-      function createEnvFile() {
-        // Cerrar el menú lateral
-        toggleSidebar();
-        
-        // Confirmación
-        if (!confirm('¿Crear/actualizar el archivo .env con la configuración completa?\n\nEsto generará un archivo con:\n• Configuración de Ollama\n• Modelo actual seleccionado\n• Configuración del servidor Flask\n• Placeholders para API keys (opcional)')) {
-          return;
-        }
-        
-        addMessage('⚙️ Creando archivo de configuración .env...', 'user');
-        
-        fetch('/system/create-env', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ overwrite: true })
-        })
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              addMessage(data.message, 'bot');
-            } else if (data.status === 'warning' && data.requires_confirmation) {
-              // Preguntar si desea sobrescribir
-              if (confirm(data.message + '\n\n¿Deseas sobrescribir el archivo existente?')) {
-                // Llamar nuevamente con confirmación
-                fetch('/system/create-env', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ overwrite: true })
-                })
-                  .then(function(resp) {
-                    return resp.json();
-                  })
-                  .then(function(result) {
-                    if (result.status === 'success') {
-                      addMessage(result.message, 'bot');
-                    } else {
-                      addMessage(result.message, 'bot');
-                    }
-                  });
-              } else {
-                addMessage('❌ Operación cancelada', 'bot');
-              }
-            } else {
-              addMessage(data.message, 'bot');
-            }
-          })
-          .catch(function(error) {
-            addMessage('❌ Error: ' + error.message, 'bot');
-          });
-      }
-
-      function viewEnvFile() {
-        // Cerrar el menú lateral
-        toggleSidebar();
-        
-        addMessage('📄 **Leyendo archivo de configuración .env...**', 'user');
-        
-        fetch('/system/read-env')
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var message = '📄 **Archivo de Configuración .env**\n\n';
-              message += '**Ubicación:** ' + data.path + '\n\n';
-              message += '**Contenido:**\n\n';
-              message += '```env\n';
-              message += data.content;
-              message += '\n```\n\n';
-              message += '💡 **Para editar:**\n';
-              message += '1. Abre el archivo en un editor de texto (Notepad, VS Code, etc.)\n';
-              message += '2. Modifica los valores que necesites\n';
-              message += '3. Guarda el archivo\n';
-              message += '4. Reinicia Kalin para aplicar cambios\n\n';
-              message += '⚠️ **Precaución:**\n';
-              message += '• No compartas este archivo (contiene configuraciones privadas)\n';
-              message += '• Mantén las API keys vacías si no las usas\n';
-              message += '• Reinicia Kalin después de cualquier cambio manual';
-              
-              addMessage(message, 'bot');
-            } else {
-              addMessage(data.message, 'bot');
-            }
-          })
-          .catch(function(error) {
-            addMessage('❌ Error al leer .env: ' + error.message, 'bot');
-          });
-      }
-
-      function quickInstall() {
-        // Cerrar el menú lateral
-        toggleSidebar();
-        
-        // Confirmación inicial
-        if (!confirm('🚀 Asistente de Instalación Automática\n\nEsto ejecutará los siguientes pasos en orden:\n\n1️⃣  Crear archivo .env (configuración automática)\n2️⃣  Verificar dependencias del sistema\n3️⃣  Crear entorno virtual\n4️⃣  Instalar packages Python\n5️⃣  Descargar modelos IA recomendados (si no están instalados)\n\n💡 El sistema detectará automáticamente el mejor modelo disponible.\n\n¿Deseas continuar?')) {
-          return;
-        }
-        
-        addMessage('🚀 **Iniciando instalación automática de Kalin...**\n\nPor favor espera, esto puede tardar varios minutos.', 'user');
-        
-        // Paso 1: Crear .env (con detección automática de modelo)
-        addMessage('⚙️ **Paso 1/5:** Creando archivo de configuración y detectando mejor modelo...', 'bot');
-        
-        setTimeout(function() {
-          fetch('/system/create-env', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ overwrite: true })
-          })
-          .then(function(response) { return response.json(); })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var modelMsg = data.model_selected ? '\n🤖 Modelo seleccionado automáticamente: **' + data.model_selected + '**' : '';
-              addMessage('✅ Paso 1 completado: Archivo .env creado' + modelMsg, 'bot');
-              
-              // Paso 2: Verificar dependencias
-              setTimeout(function() {
-                addMessage('🔍 **Paso 2/5:** Verificando dependencias...', 'bot');
-                
-                fetch('/system/check-dependencies')
-                  .then(function(response) { return response.json(); })
-                  .then(function(result) {
-                    if (result.status === 'success') {
-                      var missing = [];
-                      if (!result.results.python) missing.push('Python');
-                      if (!result.results.pip) missing.push('pip');
-                      if (!result.results.flask) missing.push('Flask');
-                      if (!result.results.ollama) missing.push('Ollama');
-                      
-                      if (missing.length > 0) {
-                        addMessage('⚠️ Faltan dependencias: ' + missing.join(', '), 'bot');
-                        addMessage('💡 Instala las dependencias faltantes antes de continuar', 'bot');
-                      } else {
-                        addMessage('✅ Paso 2 completado: Todas las dependencias están instaladas', 'bot');
-                      }
-                      
-                      // Paso 3: Crear entorno virtual
-                      setTimeout(function() {
-                        addMessage('📦 **Paso 3/5:** Creando entorno virtual...', 'bot');
-                        
-                        fetch('/system/create-venv', { method: 'POST' })
-                          .then(function(response) { return response.json(); })
-                          .then(function(venvData) {
-                            if (venvData.status === 'success' || venvData.status === 'warning') {
-                              addMessage('✅ Paso 3 completado: Entorno virtual listo', 'bot');
-                              
-                              // Paso 4: Instalar dependencias
-                              setTimeout(function() {
-                                addMessage('⚙️ **Paso 4/5:** Instalando packages Python... (esto puede tardar)', 'bot');
-                                
-                                fetch('/system/install-dependencies', { method: 'POST' })
-                                  .then(function(response) { return response.json(); })
-                                  .then(function(installData) {
-                                    if (installData.status === 'success') {
-                                      addMessage('✅ Paso 4 completado: Packages instalados', 'bot');
-                                      
-                                      // Paso 5: Verificar y descargar modelos si es necesario
-                                      setTimeout(function() {
-                                        addMessage('📥 **Paso 5/5:** Verificando modelos IA instalados...', 'bot');
-                                        
-                                        // Primero verificar qué modelos ya están instalados
-                                        fetch('/system/current-model')
-                                          .then(function(response) { return response.json(); })
-                                          .then(function(modelInfo) {
-                                            var installedModels = modelInfo.installed_models || [];
-                                            var needsDownload = [];
-                                            var recommendedModels = ['deepseek-coder:6.7b', 'llama3.2:3b'];
-                                            
-                                            // Verificar cuáles modelos recomendados faltan
-                                            recommendedModels.forEach(function(recModel) {
-                                              var isInstalled = installedModels.some(function(inst) {
-                                                return inst.includes(recModel.split(':')[0]);
-                                              });
-                                              if (!isInstalled) {
-                                                needsDownload.push(recModel);
-                                              }
-                                            });
-                                            
-                                            if (needsDownload.length === 0) {
-                                              addMessage('✅ Paso 5 completado: Ya tienes modelos IA instalados', 'bot');
-                                              
-                                              // Crear acceso directo en el escritorio
-                                              setTimeout(function() {
-                                                addMessage('🔗 **Creando acceso directo en el Escritorio...**', 'bot');
-                                                
-                                                fetch('/system/create-shortcut', {
-                                                  method: 'POST',
-                                                  headers: { 'Content-Type': 'application/json' }
-                                                })
-                                                  .then(function(response) { return response.json(); })
-                                                  .then(function(shortcutData) {
-                                                    // Resumen final - instalación completa sin descargas
-                                                    var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
-                                                    summary += '✅ Todos los pasos se completaron exitosamente\n\n';
-                                                    summary += '**Configuración detectada:**\n';
-                                                    summary += '• Modelos disponibles: ' + installedModels.join(', ') + '\n';
-                                                    summary += '• Modelo seleccionado: ' + (modelInfo.current_model || 'auto-detectado') + '\n\n';
-                                                    
-                                                    if (shortcutData.status === 'success') {
-                                                      summary += '**Acceso directo:**\n';
-                                                      summary += shortcutData.message + '\n\n';
-                                                    }
-                                                    
-                                                    summary += '**Próximos pasos:**\n';
-                                                    summary += '1. Reinicia Kalin para aplicar cambios\n';
-                                                    summary += '2. Abre http://localhost:5000\n';
-                                                    summary += '3. ¡Comienza a usar Kalin!\n\n';
-                                                    summary += '💡 **Consejo:** Puedes cambiar el modelo desde el menú lateral.';
-                                                    
-                                                    addMessage(summary, 'bot');
-                                                  })
-                                                  .catch(function(error) {
-                                                    // Si falla el acceso directo, mostrar resumen normal
-                                                    var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
-                                                    summary += '✅ Todos los pasos se completaron exitosamente\n\n';
-                                                    summary += '**Configuración detectada:**\n';
-                                                    summary += '• Modelos disponibles: ' + installedModels.join(', ') + '\n';
-                                                    summary += '• Modelo seleccionado: ' + (modelInfo.current_model || 'auto-detectado') + '\n\n';
-                                                    summary += '**Próximos pasos:**\n';
-                                                    summary += '1. Reinicia Kalin para aplicar cambios\n';
-                                                    summary += '2. Abre http://localhost:5000\n';
-                                                    summary += '3. ¡Comienza a usar Kalin!\n\n';
-                                                    summary += '💡 **Consejo:** Puedes cambiar el modelo desde el menú lateral.';
-                                                    
-                                                    addMessage(summary, 'bot');
-                                                  });
-                                              }, 1000);
-                                            } else {
-                                              // Descargar solo los modelos que faltan
-                                              addMessage('📥 Descargando modelos faltantes: ' + needsDownload.join(', ') + '... (esto puede tardar 10-30 min)', 'bot');
-                                              
-                                              fetch('/system/download-models', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ models: needsDownload })
-                                              })
-                                                .then(function(response) { return response.json(); })
-                                                .then(function(modelData) {
-                                                  if (modelData.status === 'success') {
-                                                    addMessage('✅ Paso 5 completado: Modelos descargados', 'bot');
-                                                    
-                                                    // Crear acceso directo en el escritorio
-                                                    setTimeout(function() {
-                                                      addMessage('🔗 **Creando acceso directo en el Escritorio...**', 'bot');
-                                                      
-                                                      fetch('/system/create-shortcut', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' }
-                                                      })
-                                                        .then(function(response) { return response.json(); })
-                                                        .then(function(shortcutData) {
-                                                          // Resumen final con descarga
-                                                          var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
-                                                          summary += '✅ Todos los pasos se completaron exitosamente\n\n';
-                                                          summary += '**Modelos instalados:**\n';
-                                                          modelData.results.forEach(function(r) {
-                                                            summary += '• ' + r.message + '\n';
-                                                          });
-                                                          summary += '\n';
-                                                          
-                                                          if (shortcutData.status === 'success') {
-                                                            summary += '**Acceso directo:**\n';
-                                                            summary += shortcutData.message + '\n\n';
-                                                          }
-                                                          
-                                                          summary += '**Próximos pasos:**\n';
-                                                          summary += '1. Reinicia Kalin para aplicar cambios\n';
-                                                          summary += '2. Abre http://localhost:5000\n';
-                                                          summary += '3. ¡Comienza a usar Kalin!\n\n';
-                                                          summary += '💡 **Consejo:** Puedes seleccionar otro modelo desde el menú lateral.';
-                                                          
-                                                          addMessage(summary, 'bot');
-                                                        })
-                                                        .catch(function(error) {
-                                                          // Si falla el acceso directo, mostrar resumen normal
-                                                          var summary = '\n🎉 **¡INSTALACIÓN COMPLETADA!**\n\n';
-                                                          summary += '✅ Todos los pasos se completaron exitosamente\n\n';
-                                                          summary += '**Modelos instalados:**\n';
-                                                          modelData.results.forEach(function(r) {
-                                                            summary += '• ' + r.message + '\n';
-                                                          });
-                                                          summary += '\n**Próximos pasos:**\n';
-                                                          summary += '1. Reinicia Kalin para aplicar cambios\n';
-                                                          summary += '2. Abre http://localhost:5000\n';
-                                                          summary += '3. ¡Comienza a usar Kalin!\n\n';
-                                                          summary += '💡 **Consejo:** Puedes seleccionar otro modelo desde el menú lateral.';
-                                                          
-                                                          addMessage(summary, 'bot');
-                                                        });
-                                                    }, 1000);
-                                                  } else {
-                                                    addMessage('⚠️ Algunos modelos no se pudieron descargar, pero puedes hacerlo manualmente después', 'bot');
-                                                  }
-                                                })
-                                                .catch(function(error) {
-                                                  addMessage('⚠️ Error descargando modelos. Puedes hacerlo manualmente después.', 'bot');
-                                                });
-                                            }
-                                          })
-                                          .catch(function(error) {
-                                            addMessage('⚠️ Error verificando modelos. Puedes descargarlos manualmente después.', 'bot');
-                                          });
-                                      }, 1000);
-                                    } else {
-                                      addMessage('❌ Error instalando packages. Intenta manualmente: pip install -r requirements.txt', 'bot');
-                                    }
-                                  })
-                                  .catch(function(error) {
-                                    addMessage('❌ Error en instalación de packages', 'bot');
-                                  });
-                              }, 1000);
-                            } else {
-                              addMessage('⚠️ Entorno virtual ya existe o hubo un error', 'bot');
-                            }
-                          })
-                          .catch(function(error) {
-                            addMessage('❌ Error creando entorno virtual', 'bot');
-                          });
-                      }, 1000);
-                    }
-                  })
-                  .catch(function(error) {
-                    addMessage('❌ Error verificando dependencias', 'bot');
-                  });
-              }, 1000);
-            } else {
-              addMessage('❌ Error creando .env', 'bot');
-            }
-          })
-          .catch(function(error) {
-            addMessage('❌ Error: ' + error.message, 'bot');
-          });
-        }, 500);
-      }
-
-      function openActiveModelModal() {
-        var modal = document.getElementById('active-model-modal');
-        modal.classList.add('show');
-        
-        // Cargar lista de modelos instalados
-        fetch('/system/current-model')
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              renderActiveModelList(data.current_model, data.installed_models);
-            }
-          })
-          .catch(function(error) {
-            console.error('Error cargando modelos:', error);
-            addMessage('❌ Error al cargar modelos disponibles', 'bot');
-          });
-      }
-
-      function closeActiveModelModal() {
-        var modal = document.getElementById('active-model-modal');
-        modal.classList.remove('show');
-      }
-
-      function renderActiveModelList(currentModel, installedModels) {
-        var container = document.getElementById('active-model-list');
-        container.innerHTML = '';
-        
-        if (!installedModels || installedModels.length === 0) {
-          container.innerHTML = '<div style="text-align:center; padding:20px; color:#6e6e80;">No hay modelos instalados. Descarga modelos primero.</div>';
-          return;
-        }
-        
-        // Mostrar modelo actual
-        var currentDiv = document.createElement('div');
-        currentDiv.style.padding = '12px';
-        currentDiv.style.background = '#f0f7ff';
-        currentDiv.style.borderRadius = '8px';
-        currentDiv.style.marginBottom = '16px';
-        currentDiv.innerHTML = '<strong>Modelo actual:</strong> ' + currentModel;
-        container.appendChild(currentDiv);
-        
-        // Título
-        var title = document.createElement('div');
-        title.className = 'model-category-title';
-        title.textContent = 'Modelos Instalados';
-        container.appendChild(title);
-        
-        // Lista de modelos
-        installedModels.forEach(function(modelName) {
-          var item = document.createElement('div');
-          item.className = 'model-item';
-          
-          // Resaltar modelo actual
-          if (modelName === currentModel) {
-            item.style.background = '#d4edda';
-            item.style.borderColor = '#28a745';
-          }
-          
-          item.onclick = function() { changeActiveModel(modelName); };
-          
-          var nameContainer = document.createElement('div');
-          nameContainer.style.display = 'flex';
-          nameContainer.style.alignItems = 'center';
-          nameContainer.style.justifyContent = 'space-between';
-          
-          var name = document.createElement('div');
-          name.className = 'model-name';
-          name.textContent = modelName;
-          
-          // Indicador de modelo activo
-          if (modelName === currentModel) {
-            var badge = document.createElement('span');
-            badge.className = 'model-status installed';
-            badge.textContent = '✓ Activo';
-            nameContainer.appendChild(name);
-            nameContainer.appendChild(badge);
-          } else {
-            var selectBtn = document.createElement('span');
-            selectBtn.style.padding = '4px 12px';
-            selectBtn.style.background = '#0066ff';
-            selectBtn.style.color = 'white';
-            selectBtn.style.borderRadius = '4px';
-            selectBtn.style.fontSize = '12px';
-            selectBtn.style.cursor = 'pointer';
-            selectBtn.textContent = 'Seleccionar';
-            nameContainer.appendChild(name);
-            nameContainer.appendChild(selectBtn);
-          }
-          
-          item.appendChild(nameContainer);
-          container.appendChild(item);
-        });
-      }
-
-      function changeActiveModel(modelName) {
-        if (!confirm('¿Cambiar el modelo activo a "' + modelName + '"?\n\nEste cambio se guardará permanentemente y persistirá después de reiniciar Kalin.')) {
-          return;
-        }
-        
-        closeActiveModelModal();
-        
-        addMessage('🤖 Cambiando modelo a ' + modelName + '...', 'user');
-        
-        fetch('/system/set-model', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ model: modelName })
-        })
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              addMessage(data.message, 'bot');
-              // Actualizar indicador en el header
-              updateActiveModelIndicator();
-            } else {
-              addMessage(data.message, 'bot');
-            }
-          })
-          .catch(function(error) {
-            addMessage('❌ Error: ' + error.message, 'bot');
-          });
-      }
-
-      var selectedModels = [];
-
-      function openModelModal() {
-        var modal = document.getElementById('model-modal');
-        modal.classList.add('show');
-        
-        // Cargar lista de modelos
-        fetch('/system/available-models')
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              renderModelList(data.models);
-            }
-          })
-          .catch(function(error) {
-            console.error('Error cargando modelos:', error);
-          });
-      }
-
-      function closeModelModal() {
-        var modal = document.getElementById('model-modal');
-        modal.classList.remove('show');
-        selectedModels = [];
-      }
-
-      function renderModelList(models) {
-        var container = document.getElementById('model-list');
-        container.innerHTML = '';
-        
-        // Agrupar por categoría
-        var categories = {
-          'recommended': '⭐ Recomendados',
-          'popular': '🔥 Populares',
-          'latest': '✨ Últimos del Mercado',
-          'lightweight': '💚 Ligeros'
-        };
-        
-        var grouped = {};
-        models.forEach(function(model) {
-          if (!grouped[model.category]) {
-            grouped[model.category] = [];
-          }
-          grouped[model.category].push(model);
-        });
-        
-        // Renderizar por categoría
-        Object.keys(categories).forEach(function(category) {
-          if (grouped[category]) {
-            var categoryDiv = document.createElement('div');
-            categoryDiv.className = 'model-category';
-            
-            var title = document.createElement('div');
-            title.className = 'model-category-title';
-            title.textContent = categories[category];
-            categoryDiv.appendChild(title);
-            
-            grouped[category].forEach(function(model) {
-              var item = document.createElement('div');
-              item.className = 'model-item';
-              
-              // Si ya está instalado, mostrar indicador visual
-              if (model.installed) {
-                item.style.background = '#f0fff4';
-                item.style.borderColor = '#48bb78';
-              }
-              
-              item.onclick = function() { toggleModelSelection(model.name, item); };
-              
-              var nameContainer = document.createElement('div');
-              nameContainer.style.display = 'flex';
-              nameContainer.style.alignItems = 'center';
-              
-              var name = document.createElement('div');
-              name.className = 'model-name';
-              name.textContent = model.name;
-              
-              // Agregar badge de estado
-              var status = document.createElement('span');
-              status.className = 'model-status ' + (model.installed ? 'installed' : 'not-installed');
-              status.textContent = model.installed ? '✓ Instalado' : '⬇ Descargar';
-              
-              nameContainer.appendChild(name);
-              nameContainer.appendChild(status);
-              
-              var size = document.createElement('div');
-              size.className = 'model-size';
-              size.textContent = 'Tamaño: ' + model.size;
-              
-              var desc = document.createElement('div');
-              desc.className = 'model-description';
-              desc.textContent = model.description;
-              
-              var useCase = document.createElement('div');
-              useCase.className = 'model-use-case';
-              useCase.textContent = 'Uso: ' + model.use_case;
-              
-              item.appendChild(nameContainer);
-              item.appendChild(size);
-              item.appendChild(desc);
-              item.appendChild(useCase);
-              
-              categoryDiv.appendChild(item);
-            });
-            
-            container.appendChild(categoryDiv);
-          }
-        });
-      }
-
-      function toggleModelSelection(modelName, element) {
-        var index = selectedModels.indexOf(modelName);
-        
-        if (index > -1) {
-          // Deseleccionar
-          selectedModels.splice(index, 1);
-          element.classList.remove('selected');
-        } else {
-          // Seleccionar
-          selectedModels.push(modelName);
-          element.classList.add('selected');
-        }
-        
-        // Actualizar botón
-        var btn = document.getElementById('download-selected-btn');
-        btn.disabled = selectedModels.length === 0;
-        btn.textContent = 'Descargar Seleccionados (' + selectedModels.length + ')';
-      }
-
-      function confirmDownloadModels() {
-        if (selectedModels.length === 0) {
-          return;
-        }
-        
-        // Cerrar modal
-        closeModelModal();
-        
-        // Confirmación final
-        var modelList = selectedModels.join('\n• ');
-        if (!confirm('¿Descargar los siguientes modelos?\n\n• ' + modelList + '\n\nEsto puede tardar varios minutos dependiendo de tu conexión.')) {
-          return;
-        }
-        
-        addMessage('📥 Descargando ' + selectedModels.length + ' modelo(s)... Esto puede tardar varios minutos.', 'user');
-        
-        fetch('/system/download-models', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ models: selectedModels })
-        })
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            if (data.status === 'success') {
-              var message = '📊 **Resultado de descarga de modelos**\n\n';
-              
-              data.results.forEach(function(result) {
-                message += result.message + '\n';
-              });
-              
-              message += '\n✅ **Kalin ha detectado automáticamente los nuevos modelos!**\n';
-              message += 'No necesitas reiniciar. Los modelos están listos para usar.\n';
-              
-              message += '\n💡 **Modelos disponibles:**\n';
-              selectedModels.forEach(function(model) {
-                message += '• ' + model + '\n';
-              });
-              message += '\n¡Kalin está listo para funcionar!';
-              
-              addMessage(message, 'bot');
-            } else {
-              addMessage('❌ Error al descargar modelos', 'bot');
-            }
-          })
-          .catch(function(error) {
-            addMessage('❌ Error: ' + error.message, 'bot');
-          });
-      }
-
-      document.getElementById("chat-input").addEventListener("input", updateButton);
-      updateButton();
-    </script>
   </body>
 </html>

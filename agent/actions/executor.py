@@ -5,6 +5,11 @@ import time
 from agent.analyzer import analizar_codigo
 from agent.actions.tools.fix_tool import reparar_codigo
 from agent.actions.tools import fix_tool  # Para generar_codigo
+from agent.actions.tools.install_dependencies import (
+    detectar_dependencias_desde_codigo,
+    instalar_multiples_dependencias,
+    verificar_dependencia
+)
 from agent.llm.client import is_available, get_provider_status
 from agent.core.state_manager import StateManager
 from agent.core.retry_engine import RetryEngine
@@ -582,16 +587,102 @@ class Executor:
             
             logger.info(f"Create completed: type={file_type}, length={len(nuevo)}, experience_recorded=True")
             
+            # DETECCIÓN AUTOMÁTICA DE DEPENDENCIAS (solo para Python)
+            mensaje_dependencias = ""
+            if file_type == 'py':
+                dependencias = detectar_dependencias_desde_codigo(nuevo)
+                if dependencias:
+                    # Verificar cuáles faltan
+                    faltantes = [dep for dep in dependencias if not verificar_dependencia(dep)]
+                    if faltantes:
+                        self.state_manager.set_dependencias_pendientes(faltantes)
+                        mensaje_dependencias = f"\n\n📦 **Dependencias detectadas:** {', '.join(faltantes)}\n💡 Escribe 'instala las dependencias' para instalarlas automáticamente."
+            
             # Mostrar el CÓDIGO FUENTE automáticamente (no compilado)
             lenguaje_display = file_type.upper() if len(file_type) <= 3 else file_type.capitalize()
             
             # jsonify escapará automáticamente los caracteres especiales
-            respuesta_texto = f"✅ Código {lenguaje_display} generado exitosamente:\n\n```{file_type}\n{nuevo}\n```"
+            respuesta_texto = f"✅ Código {lenguaje_display} generado exitosamente:\n\n```{file_type}\n{nuevo}\n```{mensaje_dependencias}"
             
             # DEBUG: Verificar longitud
             logger.info(f"Returning response with code length: {len(nuevo)} chars")
             
             return jsonify({"respuesta": respuesta_texto, "preview": nuevo[:800]})
+
+        if intencion == "install_deps":
+            # Instalar dependencias Python automáticamente
+            codigo = args.get("codigo") or self.state_manager.get_ultimo_codigo_generado()
+            
+            if not codigo:
+                return jsonify({"respuesta": "❌ No hay código reciente. Genera código primero con /create o proporciona el código."})
+            
+            # Detectar dependencias desde el código
+            dependencias = detectar_dependencias_desde_codigo(codigo)
+            
+            if not dependencias:
+                return jsonify({"respuesta": "✅ No se detectaron dependencias externas. El código solo usa bibliotecas estándar de Python."})
+            
+            # Verificar cuáles ya están instaladas
+            faltantes = []
+            instaladas = []
+            
+            for dep in dependencias:
+                if verificar_dependencia(dep):
+                    instaladas.append(dep)
+                else:
+                    faltantes.append(dep)
+            
+            if not faltantes:
+                respuesta = f"✅ Todas las dependencias ya están instaladas:\n"
+                for dep in instaladas:
+                    respuesta += f"  • {dep}\n"
+                return jsonify({"respuesta": respuesta})
+            
+            # Mostrar dependencias faltantes y preguntar si instalar
+            respuesta = f"📦 **Dependencias detectadas:**\n\n"
+            
+            if instaladas:
+                respuesta += f"✅ Ya instaladas:\n"
+                for dep in instaladas:
+                    respuesta += f"  • {dep}\n"
+                respuesta += "\n"
+            
+            respuesta += f"⚠️ Faltan por instalar:\n"
+            for dep in faltantes:
+                respuesta += f"  • {dep}\n"
+            
+            respuesta += f"\n💡 ¿Quieres que instale estas dependencias? Responde 'sí' o 'instalar'."
+            
+            # Guardar dependencias pendientes en state_manager para instalación posterior
+            self.state_manager.set_dependencias_pendientes(faltantes)
+            
+            return jsonify({"respuesta": respuesta})
+
+        if intencion == "confirm_install":
+            # Confirmar e instalar dependencias pendientes
+            dependencias = self.state_manager.get_dependencias_pendientes()
+            
+            if not dependencias:
+                return jsonify({"respuesta": "❌ No hay dependencias pendientes de instalación."})
+            
+            respuesta = f"📦 Instalando {len(dependencias)} dependencias...\n\n"
+            resultados = instalar_multiples_dependencias(dependencias)
+            
+            exitosas = sum(1 for r in resultados.values() if r["installed"])
+            fallidas = len(resultados) - exitosas
+            
+            respuesta += f"✅ Instaladas: {exitosas}\n"
+            if fallidas > 0:
+                respuesta += f"❌ Fallidas: {fallidas}\n\n"
+            
+            for paquete, resultado in resultados.items():
+                status = "✅" if resultado["installed"] else "❌"
+                respuesta += f"{status} {paquete}: {resultado['message']}\n"
+            
+            # Limpiar dependencias pendientes
+            self.state_manager.clear_dependencias_pendientes()
+            
+            return jsonify({"respuesta": respuesta})
 
         if intencion == "show_code":
             # Mostrar último código generado
@@ -679,7 +770,21 @@ class Executor:
         if intencion == "help":
             logger.info("Help command executed")
             return jsonify({
-                "respuesta": "Comandos disponibles: /setpath <ruta>, /scan, /fix <archivo>, /apply, /analyze <archivo>, /create <requerimiento>, /refactor <archivo>, /experience, /learn"
+                "respuesta": "Comandos disponibles:\n\n"
+                           "📁 /setpath <ruta> - Configurar ruta del proyecto\n"
+                           "🔍 /scan - Escanear proyecto\n"
+                           "🔧 /fix <archivo> - Corregir errores\n"
+                           "✅ /apply - Aplicar cambios\n"
+                           "📊 /analyze <archivo> - Analizar código\n"
+                           "✨ /create <requerimiento> - Generar código nuevo\n"
+                           "♻️ /refactor <archivo> - Refactorizar\n"
+                           "📦 install_deps - Detectar e instalar dependencias\n"
+                           "🧠 /experience - Ver memoria de aprendizaje\n"
+                           "❓ /help - Mostrar esta ayuda\n\n"
+                           "💡 También puedes hablar naturalmente:\n"
+                           "  • 'crea una app en python'\n"
+                           "  • 'revisa mi proyecto'\n"
+                           "  • 'instala las dependencias'"
             })
 
         if intencion == "experience" or (intencion == "chat" and any(word in contexto.get("mensaje", "").lower() for word in ["experiencia", "aprendizaje", "memoria", "estadísticas"])):
