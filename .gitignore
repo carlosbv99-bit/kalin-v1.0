@@ -152,3 +152,7 @@ SISTEMA_MEMORIA_*.md
 INTEGRACION_*.md
 ESCALABILIDAD_*.md
 RESUMEN_CORRECCIONES_*.md
+
+.agent_state.json
+
+.agent_state.json
