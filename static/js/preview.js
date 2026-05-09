@@ -18,12 +18,33 @@ class PreviewManager {
     initialize() {
         if (this.initialized) return;
 
+        console.log('🔧 Initializing PreviewManager...');
+        
         this.previewFrame = document.getElementById('preview-frame');
         this.placeholder = document.getElementById('preview-placeholder');
         this.toggleButton = document.getElementById('preview-toggle');
 
+        console.log('Preview elements:', {
+            frame: !!this.previewFrame,
+            placeholder: !!this.placeholder,
+            toggleButton: !!this.toggleButton
+        });
+
         if (!this.previewFrame || !this.placeholder) {
             console.error('❌ Preview elements not found');
+            return;
+        }
+        
+        if (!this.toggleButton) {
+            console.error('❌ Toggle button not found!');
+            // Intentar encontrarlo de nuevo después de un delay
+            setTimeout(() => {
+                this.toggleButton = document.getElementById('preview-toggle');
+                console.log('Retry - Toggle button:', !!this.toggleButton);
+                if (this.toggleButton) {
+                    this.setupEventListeners();
+                }
+            }, 500);
             return;
         }
 
@@ -34,26 +55,44 @@ class PreviewManager {
         if (window.AppConfig?.LOGGING.ENABLE_SECURITY_LOGS) {
             this.initializeSecurityLog();
         }
+        
+        console.log('✅ PreviewManager initialized successfully');
     }
 
     /**
      * Configurar event listeners
      */
     setupEventListeners() {
-        if (this.toggleButton) {
-            this.toggleButton.addEventListener('click', () => this.toggle());
-        }
+        // No necesitamos addEventListener porque usamos onclick inline en HTML
+        console.log('✅ Event listeners configurados (usando onclick inline)');
     }
 
     /**
      * Activar/desactivar preview
      */
     toggle() {
+        console.log('🔘 Preview toggle clicked. Current state:', this.enabled);
+        
+        if (!this.toggleButton) {
+            console.error('❌ Toggle button not found');
+            return;
+        }
+        
         this.enabled = !this.enabled;
         this.updateToggleButton();
 
         if (this.enabled) {
             console.log('✅ Preview activado');
+            // Si hay contenido previo en el iframe, mostrarlo
+            if (this.previewFrame && this.previewFrame.srcdoc) {
+                console.log('✅ Hay contenido en iframe, mostrando...');
+                this.placeholder.style.display = 'none';
+                this.previewFrame.style.display = 'block';
+                console.log('✅ Mostrando preview existente');
+            } else {
+                console.log('⚠️ No hay contenido en iframe (srcdoc vacío)');
+                this.showPlaceholderMessage('💡 Genera código HTML para ver el preview');
+            }
         } else {
             console.log('⏸️ Preview desactivado');
             this.hidePreview();

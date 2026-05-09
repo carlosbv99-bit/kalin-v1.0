@@ -12,11 +12,16 @@ let lastGeneratedCode = '';
  * Función togglePreview legacy (redirige a PreviewManager)
  */
 function togglePreview() {
+    console.log('🔘 Legacy togglePreview called');
+    
     if (window.PreviewManager) {
+        console.log('✅ PreviewManager found, calling toggle');
         window.PreviewManager.toggle();
         previewEnabled = window.PreviewManager.enabled;
+        console.log('✅ Preview state changed to:', previewEnabled);
     } else {
-        console.warn('⚠️ PreviewManager no disponible');
+        console.error('❌ PreviewManager no disponible');
+        alert('Error: PreviewManager no está inicializado');
     }
 }
 

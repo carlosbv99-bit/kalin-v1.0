@@ -1040,7 +1040,7 @@
             <span>👁️ Preview</span>
             <span class="security-badge" title="Sandbox activo con CSP estricta">🔒 Seguro</span>
           </div>
-          <button class="preview-toggle" id="preview-toggle" onclick="togglePreview()">Activar</button>
+          <button class="preview-toggle" id="preview-toggle" onclick="if(window.PreviewManager) window.PreviewManager.toggle();">Activar</button>
         </div>
         <div class="preview-content" id="preview-content">
           <div class="preview-placeholder" id="preview-placeholder">

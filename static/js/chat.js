@@ -114,11 +114,12 @@ class ChatManager {
      * @param {Object} response - Respuesta del servidor
      */
     processResponse(response) {
-        // Extraer texto de la respuesta
-        const responseText = response.text || response.message || response.response || '';
+        // Extraer texto de la respuesta (el backend usa 'respuesta' en español)
+        const responseText = response.respuesta || response.text || response.message || response.response || '';
 
         if (!responseText) {
             this.addMessage('⚠️ No se recibió respuesta', 'assistant');
+            console.error('❌ Respuesta vacía. Keys disponibles:', Object.keys(response));
             return;
         }
 
@@ -136,10 +137,20 @@ class ChatManager {
         // Si es HTML y preview está activo, renderizar
         if (window.PreviewManager) {
             const code = response.code || this.extractCode(responseText);
+            console.log('🔍 Checking for HTML code to render:', {
+                hasCodeField: !!response.code,
+                extractedCode: !!code,
+                isHTML: code ? window.PreviewManager.isHTMLCode(code) : false,
+                previewEnabled: window.PreviewManager.enabled
+            });
+            
             if (code && window.PreviewManager.isHTMLCode(code)) {
+                console.log('✅ Rendering HTML in preview');
                 setTimeout(() => {
                     window.PreviewManager.render(code);
                 }, window.AppConfig?.RENDERING.PREVIEW_RENDER_DELAY || 500);
+            } else {
+                console.log('⚠️ Not rendering - conditions not met');
             }
         }
     }
