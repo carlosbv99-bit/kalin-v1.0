@@ -106,11 +106,17 @@ class PreviewManager {
         if (!this.toggleButton) return;
 
         if (this.enabled) {
-            this.toggleButton.textContent = 'Desactivar';
             this.toggleButton.classList.add('active');
+            // Mantener solo el ícono de play
+            if (!this.toggleButton.innerHTML.includes('▶')) {
+                this.toggleButton.innerHTML = '▶️';
+            }
         } else {
-            this.toggleButton.textContent = 'Activar';
             this.toggleButton.classList.remove('active');
+            // Mantener solo el ícono de play
+            if (!this.toggleButton.innerHTML.includes('▶')) {
+                this.toggleButton.innerHTML = '▶️';
+            }
         }
     }
 

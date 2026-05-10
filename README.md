@@ -35,7 +35,6 @@ Accede a: **http://localhost:5000**
 
 **Para documentación detallada, ver:**
 - **[README_PROFESSIONAL.md](README_PROFESSIONAL.md)** - Documentación completa del proyecto
-- **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** - Resumen ejecutivo
 - **[GUIA_USUARIO.md](GUIA_USUARIO.md)** - Guía de usuario
 
 ---
@@ -90,8 +89,38 @@ python prepare_for_review.py
 | LLM Integration | ✅ Stable |
 | Experience Memory | ✅ Stable |
 | Web Interface | ✅ Stable |
-| Tests | ⚠️ In Progress |
+| Tests | ✅ Complete |
 | CI/CD | ❌ Pending |
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+kalin/
+├── agent/              # Núcleo del agente IA
+│   ├── core/           # Componentes principales
+│   ├── llm/            # Integraciones con LLMs
+│   ├── actions/        # Acciones y herramientas
+│   └── templates/      # Plantillas de prompts
+├── app/                # Aplicación Android (Flutter)
+├── static/             # Archivos estáticos web
+├── templates/          # Plantillas HTML
+├── tests/              # Suite de pruebas
+├── .env.example        # Variables de entorno de ejemplo
+├── requirements.txt    # Dependencias Python
+├── run.py             # Punto de entrada principal
+└── web.py             # Servidor Flask
+```
+
+---
+
+## 🔒 Seguridad
+
+- ✅ No se incluyen credenciales en el repositorio
+- ✅ Archivo `.env` excluido vía `.gitignore`
+- ✅ Variables de entorno para configuración sensible
+- ✅ Auditoría de seguridad implementada
 
 ---
 

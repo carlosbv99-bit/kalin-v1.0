@@ -1,4 +1,4 @@
-﻿"""
+"""
 LLM Providers: Implementaciones de diferentes servicios LLM.
 
 Soportados:
@@ -7,12 +7,18 @@ Soportados:
 - Anthropic (cloud)
 - Azure (cloud)
 - HuggingFace (cloud)
+- Groq (cloud - gratis, ultra-rápido)
+- Google Gemini (cloud - gratis con límites)
+- Mistral AI (cloud - económico)
 """
 
 from agent.llm.providers.base_provider import BaseLLMProvider, LLMResponse
 from agent.llm.providers.ollama_provider import OllamaProvider
 from agent.llm.providers.openai_provider import OpenAIProvider
 from agent.llm.providers.anthropic_provider import AnthropicProvider
+from agent.llm.providers.groq_provider import GroqProvider
+from agent.llm.providers.gemini_provider import GeminiProvider
+from agent.llm.providers.mistral_provider import MistralProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -20,4 +26,7 @@ __all__ = [
     "OllamaProvider",
     "OpenAIProvider",
     "AnthropicProvider",
+    "GroqProvider",
+    "GeminiProvider",
+    "MistralProvider",
 ]

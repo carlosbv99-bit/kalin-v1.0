@@ -10,6 +10,9 @@ class ProviderType(Enum):
     ANTHROPIC = "anthropic"
     AZURE = "azure"
     HUGGING_FACE = "huggingface"
+    GROQ = "groq"
+    GEMINI = "gemini"
+    MISTRAL = "mistral"
 
 
 class LLMConfig:
@@ -62,6 +65,27 @@ class LLMConfig:
             "api_key": os.getenv("HF_API_KEY"),
             "timeout": 30,
             "cost_per_1k": 0.001,
+        },
+        ProviderType.GROQ: {
+            "endpoint": "https://api.groq.com/openai/v1",
+            "model": os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+            "api_key": os.getenv("GROQ_API_KEY"),
+            "timeout": 30,
+            "cost_per_1k": 0,  # Gratis actualmente
+        },
+        ProviderType.GEMINI: {
+            "endpoint": "https://generativelanguage.googleapis.com",
+            "model": os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+            "api_key": os.getenv("GEMINI_API_KEY"),
+            "timeout": 30,
+            "cost_per_1k": 0,  # Gratis con límites
+        },
+        ProviderType.MISTRAL: {
+            "endpoint": "https://api.mistral.ai/v1",
+            "model": os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
+            "api_key": os.getenv("MISTRAL_API_KEY"),
+            "timeout": 30,
+            "cost_per_1k": 0.002,  # Muy económico
         },
     }
 

@@ -495,10 +495,12 @@ class UIManager {
         container.innerHTML = '';
         
         const categories = {
-            'recommended': '⭐ Recomendados',
-            'popular': '🔥 Populares',
-            'latest': '✨ Últimos del Mercado',
-            'lightweight': '💚 Ligeros'
+            'lightweight': '💚 Ligeros (2-4GB RAM)',
+            'recommended': '⭐ Recomendados (4-8GB RAM)',
+            'popular': '🔥 Populares (4-8GB RAM)',
+            'latest': '✨ Últimos del Mercado (8-16GB RAM)',
+            'high-performance': '🚀 Alto Rendimiento (16GB+ RAM)',
+            'ultra': '💎 Ultra-Potentes (32GB+ RAM)'
         };
         
         const grouped = {};
@@ -528,11 +530,21 @@ class UIManager {
                         item.style.borderColor = '#48bb78';
                     }
                     
+                    // Agregar indicador visual para modelos ultra-potentes
+                    if (category === 'ultra') {
+                        item.style.borderLeftWidth = '6px';
+                        item.style.borderLeftColor = '#9f7aea';
+                    } else if (category === 'high-performance') {
+                        item.style.borderLeftWidth = '5px';
+                        item.style.borderLeftColor = '#ed8936';
+                    }
+                    
                     item.onclick = () => this.toggleModelSelection(model.name, item);
                     
                     const nameContainer = document.createElement('div');
                     nameContainer.style.display = 'flex';
                     nameContainer.style.alignItems = 'center';
+                    nameContainer.style.justifyContent = 'space-between';
                     
                     const name = document.createElement('div');
                     name.className = 'model-name';
@@ -549,6 +561,28 @@ class UIManager {
                     size.className = 'model-size';
                     size.textContent = 'Tamaño: ' + model.size;
                     
+                    // Agregar requisito de RAM
+                    const ramReq = document.createElement('div');
+                    ramReq.className = 'model-ram-requirement';
+                    ramReq.style.cssText = 'font-size: 12px; color: #666; margin-top: 4px; font-weight: 500;';
+                    
+                    // Icono según categoría
+                    let ramIcon = '💻';
+                    if (category === 'ultra') ramIcon = '🖥️';
+                    else if (category === 'high-performance') ramIcon = '⚡';
+                    else if (category === 'lightweight') ramIcon = '💚';
+                    
+                    ramReq.textContent = `${ramIcon} RAM mínima: ${model.min_ram}`;
+                    
+                    // Agregar nota especial si existe
+                    if (model.note) {
+                        const note = document.createElement('div');
+                        note.className = 'model-note';
+                        note.style.cssText = 'font-size: 11px; color: #999; margin-top: 4px; font-style: italic; padding-left: 12px; border-left: 2px solid #ddd;';
+                        note.textContent = model.note;
+                        item.appendChild(note);
+                    }
+                    
                     const desc = document.createElement('div');
                     desc.className = 'model-description';
                     desc.textContent = model.description;
@@ -559,6 +593,7 @@ class UIManager {
                     
                     item.appendChild(nameContainer);
                     item.appendChild(size);
+                    item.appendChild(ramReq);
                     item.appendChild(desc);
                     item.appendChild(useCase);
                     
@@ -574,6 +609,8 @@ class UIManager {
      * Toggle selección de modelo
      */
     toggleModelSelection(modelName, element) {
+        console.log('🔘 toggleModelSelection:', modelName);
+        
         if (!this.selectedModels) {
             this.selectedModels = [];
         }
@@ -583,15 +620,20 @@ class UIManager {
         if (index > -1) {
             this.selectedModels.splice(index, 1);
             element.classList.remove('selected');
+            console.log('➖ Modelo deseleccionado:', modelName);
         } else {
             this.selectedModels.push(modelName);
             element.classList.add('selected');
+            console.log('➕ Modelo seleccionado:', modelName);
         }
+        
+        console.log('📦 Total seleccionados:', this.selectedModels.length, this.selectedModels);
         
         const btn = document.getElementById('download-selected-btn');
         if (btn) {
             btn.disabled = this.selectedModels.length === 0;
             btn.textContent = 'Descargar Seleccionados (' + this.selectedModels.length + ')';
+            console.log('🔘 Botón estado:', btn.disabled ? 'DESHABILITADO' : 'HABILITADO');
         }
     }
 
@@ -599,65 +641,277 @@ class UIManager {
      * Confirmar descarga de modelos
      */
     async confirmDownloadModels() {
+        console.log('🔵 confirmDownloadModels llamado');
+        console.log('📦 Modelos seleccionados:', this.selectedModels);
+        
         if (!this.selectedModels || this.selectedModels.length === 0) {
+            console.log('⚠️ No hay modelos seleccionados');
+            alert('⚠️ Primero debes seleccionar al menos un modelo de la lista.');
             return;
         }
 
         const modal = document.getElementById('model-modal');
         if (modal) {
             modal.classList.remove('show');
+            console.log('✅ Modal de selección cerrado');
         }
 
-        const modelList = this.selectedModels.join('\n• ');
-        if (!confirm('¿Descargar los siguientes modelos?\n\n• ' + modelList + '\n\nEsto puede tardar varios minutos dependiendo de tu conexión.')) {
-            return;
-        }
+        // Mostrar alerta inmediata para confirmar que se inició
+        alert('📥 Iniciando descarga de ' + this.selectedModels.length + ' modelo(s)...\n\nSe abrirá una ventana de progreso.');
 
+        // Agregar mensaje al chat inmediatamente
         if (window.ChatManager) {
-            window.ChatManager.addMessage('📥 Descargando ' + this.selectedModels.length + ' modelo(s)... Esto puede tardar varios minutos.', 'user');
+            window.ChatManager.addMessage('📥 **Iniciando descarga de modelos...**\n\nModelos seleccionados:\n' + 
+                this.selectedModels.map(m => '• ' + m).join('\n') + 
+                '\n\n⏳ Por favor espera, esto puede tardar varios minutos...', 'user');
+        }
+
+        // Mostrar modal de progreso
+        console.log('🔄 Mostrando modal de progreso...');
+        try {
+            this.showDownloadProgressModal();
+            console.log('✅ Modal de progreso mostrado correctamente');
+        } catch (modalError) {
+            console.error('💥 Error mostrando modal:', modalError);
+            alert('Error al mostrar el modal de progreso: ' + modalError.message);
         }
 
         try {
+            // Simular progreso inicial para cada modelo
+            console.log('🎬 Iniciando simulación de progreso...');
+            this.simulateDownloadProgress();
+            
+            console.log('📡 Enviando solicitud al backend...');
             const response = await fetch('/system/download-models', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ models: this.selectedModels })
             });
 
+            console.log('📥 Respuesta recibida:', response.status);
             const data = await response.json();
+            console.log('📦 Datos:', data);
             
             if (data.status === 'success') {
-                let message = '📊 **Resultado de descarga de modelos**\n\n';
+                console.log('✅ Descarga exitosa, actualizando progreso...');
+                // Actualizar progreso final para cada modelo
+                this.updateDownloadProgress(data.results);
                 
-                data.results.forEach(result => {
-                    message += result.message + '\n';
-                });
-                
-                message += '\n✅ **Kalin ha detectado automáticamente los nuevos modelos!**\n';
-                message += 'No necesitas reiniciar. Los modelos están listos para usar.\n';
-                
-                message += '\n💡 **Modelos disponibles:**\n';
-                this.selectedModels.forEach(model => {
-                    message += '• ' + model + '\n';
-                });
-                message += '\n¡Kalin está listo para funcionar!';
-                
-                if (window.ChatManager) {
-                    window.ChatManager.addMessage(message, 'assistant');
-                }
+                // Esperar MÁS tiempo para que el usuario vea el resultado completo
+                setTimeout(() => {
+                    console.log('🔒 Cerrando modal de progreso...');
+                    this.hideDownloadProgressModal();
+                    
+                    let message = '📊 **Resultado de descarga de modelos**\n\n';
+                    
+                    data.results.forEach(result => {
+                        message += result.message + '\n';
+                    });
+                    
+                    message += '\n✅ **Kalin ha detectado automáticamente los nuevos modelos!**\n';
+                    message += 'No necesitas reiniciar. Los modelos están listos para usar.\n';
+                    
+                    message += '\n💡 **Modelos disponibles:**\n';
+                    this.selectedModels.forEach(model => {
+                        message += '• ' + model + '\n';
+                    });
+                    message += '\n¡Kalin está listo para funcionar!';
+                    
+                    if (window.ChatManager) {
+                        window.ChatManager.addMessage(message, 'assistant');
+                    }
+                }, 5000); // Aumentado a 5 segundos para ver mejor el progreso
             } else {
+                console.log('❌ Error en respuesta:', data);
+                this.hideDownloadProgressModal();
                 if (window.ChatManager) {
                     window.ChatManager.addMessage('❌ Error al descargar modelos', 'assistant');
                 }
             }
         } catch (error) {
-            console.error('Error descargando modelos:', error);
+            console.error('💥 Error descargando modelos:', error);
+            this.hideDownloadProgressModal();
             if (window.ChatManager) {
                 window.ChatManager.addMessage('❌ Error: ' + error.message, 'assistant');
             }
         }
 
         this.selectedModels = [];
+        console.log('🧹 Modelos seleccionados limpiados');
+    }
+
+    /**
+     * Simular progreso de descarga visualmente
+     */
+    simulateDownloadProgress() {
+        this.selectedModels.forEach((modelName, index) => {
+            // Marcar como "descargando" después de un delay
+            setTimeout(() => {
+                const itemId = 'download-' + modelName.replace(/[^a-zA-Z0-9]/g, '-');
+                const item = document.getElementById(itemId);
+                
+                if (item && item.classList.contains('pending')) {
+                    item.className = 'download-item downloading';
+                    item.innerHTML = `
+                        <div class="download-item-name">${modelName}</div>
+                        <div class="download-item-status">⬇️ Descargando...</div>
+                    `;
+                }
+            }, (index + 1) * 800); // Delay progresivo para efecto visual
+        });
+    }
+
+    /**
+     * Mostrar modal de progreso de descarga
+     */
+    showDownloadProgressModal() {
+        console.log('📦 showDownloadProgressModal llamado');
+        console.log('📦 selectedModels:', this.selectedModels);
+        
+        // Crear modal de progreso si no existe
+        let progressModal = document.getElementById('download-progress-modal');
+        console.log('🔍 Modal existente:', !!progressModal);
+        
+        if (!progressModal) {
+            console.log('➕ Creando nuevo modal de progreso...');
+            progressModal = document.createElement('div');
+            progressModal.id = 'download-progress-modal';
+            progressModal.className = 'modal-overlay';
+            progressModal.innerHTML = `
+                <div class="modal" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <div class="modal-title">📥 Descargando Modelos</div>
+                    </div>
+                    <div class="modal-body">
+                        <div id="download-progress-content">
+                            <div style="text-align: center; padding: 20px;">
+                                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                                <p style="font-size: 16px; color: #666;">Iniciando descarga...</p>
+                            </div>
+                            <div id="download-models-list" style="margin-top: 20px;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(progressModal);
+            console.log('✅ Modal agregado al DOM');
+            
+            // Agregar estilo de animación
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .download-item {
+                    padding: 12px;
+                    margin: 8px 0;
+                    border-radius: 8px;
+                    background: #f8f9fa;
+                    border-left: 4px solid #ddd;
+                    transition: all 0.3s ease;
+                }
+                .download-item.pending {
+                    border-left-color: #ffc107;
+                }
+                .download-item.downloading {
+                    border-left-color: #3498db;
+                    background: #ebf5fb;
+                }
+                .download-item.completed {
+                    border-left-color: #28a745;
+                    background: #d4edda;
+                }
+                .download-item.error {
+                    border-left-color: #dc3545;
+                    background: #f8d7da;
+                }
+                .download-item-name {
+                    font-weight: 600;
+                    margin-bottom: 4px;
+                }
+                .download-item-status {
+                    font-size: 13px;
+                    color: #666;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('✅ Estilos agregados');
+        }
+        
+        console.log('👁️ Mostrando modal (agregando clase show)...');
+        progressModal.classList.add('show');
+        console.log('✅ Clase show agregada');
+        
+        // Mostrar lista inicial de modelos pendientes
+        const listContainer = document.getElementById('download-models-list');
+        console.log('🔍 List container encontrado:', !!listContainer);
+        
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            console.log('📝 Agregando', this.selectedModels.length, 'modelos a la lista...');
+            
+            this.selectedModels.forEach(modelName => {
+                const item = document.createElement('div');
+                item.className = 'download-item pending';
+                item.id = 'download-' + modelName.replace(/[^a-zA-Z0-9]/g, '-');
+                item.innerHTML = `
+                    <div class="download-item-name">${modelName}</div>
+                    <div class="download-item-status">⏳ Pendiente...</div>
+                `;
+                listContainer.appendChild(item);
+                console.log('➕ Modelo agregado:', modelName);
+            });
+            console.log('✅ Lista de modelos completada');
+        } else {
+            console.error('❌ No se encontró download-models-list');
+        }
+        
+        console.log('✅ showDownloadProgressModal completado');
+    }
+
+    /**
+     * Actualizar progreso de descarga
+     */
+    updateDownloadProgress(results) {
+        results.forEach((result, index) => {
+            setTimeout(() => {
+                const itemId = 'download-' + result.model.replace(/[^a-zA-Z0-9]/g, '-');
+                const item = document.getElementById(itemId);
+                
+                if (item) {
+                    if (result.status === 'success' || result.status === 'already_installed') {
+                        item.className = 'download-item completed';
+                        item.innerHTML = `
+                            <div class="download-item-name">${result.model}</div>
+                            <div class="download-item-status">✅ ${result.message}</div>
+                        `;
+                    } else if (result.status === 'downloading') {
+                        item.className = 'download-item downloading';
+                        item.innerHTML = `
+                            <div class="download-item-name">${result.model}</div>
+                            <div class="download-item-status">⬇️ Descargando...</div>
+                        `;
+                    } else {
+                        item.className = 'download-item error';
+                        item.innerHTML = `
+                            <div class="download-item-name">${result.model}</div>
+                            <div class="download-item-status">❌ ${result.message}</div>
+                        `;
+                    }
+                }
+            }, index * 500); // Delay para efecto visual secuencial
+        });
+    }
+
+    /**
+     * Ocultar modal de progreso
+     */
+    hideDownloadProgressModal() {
+        const progressModal = document.getElementById('download-progress-modal');
+        if (progressModal) {
+            progressModal.classList.remove('show');
+        }
     }
 
     /**
@@ -921,11 +1175,23 @@ class UIManager {
      * Toggle auto-dependencias
      */
     toggleAutoDependencies() {
-        const toggle = document.getElementById('auto-deps-toggle');
+        // Buscar el checkbox en ambos lugares (sidebar y dropdown)
+        const toggle = document.getElementById('auto-deps-toggle') || 
+                      document.getElementById('auto-deps-toggle-dropdown');
+        
         if (toggle) {
             const enabled = toggle.checked;
             console.log('Auto-dependencias:', enabled ? 'activado' : 'desactivado');
             localStorage.setItem('auto_dependencies', enabled);
+            
+            // Sincronizar ambos checkboxes si existen
+            const toggleSidebar = document.getElementById('auto-deps-toggle');
+            const toggleDropdown = document.getElementById('auto-deps-toggle-dropdown');
+            
+            if (toggleSidebar && toggleDropdown) {
+                toggleSidebar.checked = enabled;
+                toggleDropdown.checked = enabled;
+            }
             
             // Guardar en el backend también
             fetch('/system/set-auto-deps', {
@@ -1043,14 +1309,6 @@ class UIManager {
     }
 
     /**
-     * Confirmar descarga de modelos
-     */
-    confirmDownloadModels() {
-        console.log('⬇️ UIManager.confirmDownloadModels llamado');
-        alert('⬇️ Descargando modelos seleccionados...');
-    }
-
-    /**
      * Cerrar modal de modelo activo
      */
     closeActiveModelModal() {
@@ -1065,6 +1323,7 @@ class UIManager {
 // Exportar como singleton
 const uiManager = new UIManager();
 
+// Registrar funciones globales INMEDIATAMENTE (antes de DOMContentLoaded)
 if (typeof window !== 'undefined') {
     window.UIManager = uiManager;
     
@@ -1125,6 +1384,13 @@ if (typeof window !== 'undefined') {
     };
     window.confirmDownloadModels = () => {
         console.log('⬇️ confirmDownloadModels wrapper llamado');
+        console.log('📦 uiManager existe:', !!uiManager);
+        console.log('📦 selectedModels:', uiManager ? uiManager.selectedModels : 'N/A');
+        if (!uiManager) {
+            console.error('❌ uiManager no está inicializado');
+            alert('Error: uiManager no está disponible. Recarga la página.');
+            return;
+        }
         return uiManager.confirmDownloadModels();
     };
     window.closeActiveModelModal = () => {
@@ -1135,3 +1401,31 @@ if (typeof window !== 'undefined') {
     console.log('✅ Funciones de UIManager expuestas globalmente para compatibilidad');
     console.log('✅ Funciones registradas:', Object.keys(window).filter(k => ['exportExperience', 'importExperience', 'checkDependencies', 'createVenv', 'installDependencies', 'downloadModels', 'selectActiveModel'].includes(k)));
 }
+
+// Verificación adicional cuando DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Verificando funciones del menú de configuración...');
+    
+    const requiredFunctions = [
+        'selectActiveModel',
+        'downloadModels', 
+        'installDependencies',
+        'createVenv'
+    ];
+    
+    let allRegistered = true;
+    requiredFunctions.forEach(funcName => {
+        if (typeof window[funcName] === 'function') {
+            console.log(`✅ Función ${funcName} registrada correctamente`);
+        } else {
+            console.error(`❌ Función ${funcName} NO está registrada`);
+            allRegistered = false;
+        }
+    });
+    
+    if (allRegistered) {
+        console.log('✅ Todas las funciones del menú de configuración están disponibles');
+    } else {
+        console.error('❌ ALGUNAS FUNCIONES NO ESTÁN REGISTRADAS - Los botones pueden no funcionar');
+    }
+});

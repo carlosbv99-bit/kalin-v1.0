@@ -382,23 +382,30 @@ def download_models():
                     'message': f'✅ {model} descargado correctamente'
                 })
             else:
+                # Incluir el error detallado de Ollama
+                error_detail = result.stderr.strip() if result.stderr else 'Error desconocido'
                 results.append({
                     'model': model,
                     'status': 'error',
-                    'message': f'❌ Error al descargar {model}'
+                    'message': f'❌ Error al descargar {model}: {error_detail}'
                 })
         
         except subprocess.TimeoutExpired:
             results.append({
                 'model': model,
                 'status': 'timeout',
-                'message': f'⏱️  Timeout descargando {model}'
+                'message': f'⏱️ Timeout descargando {model} (tardó más de 10 minutos)'
             })
         except Exception as e:
+            error_msg = str(e)
+            # Si es error de SSL/certificado, dar sugerencia
+            if 'certificate' in error_msg.lower() or 'ssl' in error_msg.lower():
+                error_msg += '\n\n💡 Sugerencia: Ejecuta "ollama pull ' + model + '" en PowerShell para ver el error detallado.\nPuede ser un problema de certificados SSL o proxy.'
+            
             results.append({
                 'model': model,
                 'status': 'error',
-                'message': f'❌ Error: {str(e)}'
+                'message': f'❌ Error: {error_msg}'
             })
     
     # Refrescar modelos en Kalin automáticamente
@@ -424,61 +431,144 @@ def download_models():
 def available_models():
     """Obtiene lista de modelos recomendados y populares"""
     recommended = [
+        # ===== MODELOS LIGEROS (2-4GB RAM) =====
         {
-            'name': 'deepseek-coder:6.7b',
-            'size': '~4GB',
-            'category': 'recommended',
-            'description': 'Especializado en generación de código (Python, JS, Java, etc.)',
-            'use_case': 'Generación y análisis de código'
+            'name': 'llama3.2:1b',
+            'size': '~1.3GB',
+            'category': 'lightweight',
+            'description': 'Modelo ultra-ligero, ideal para equipos básicos',
+            'use_case': 'Tareas simples, equipos con poca RAM',
+            'min_ram': '4GB'
+        },
+        {
+            'name': 'phi3:mini',
+            'size': '~2GB',
+            'category': 'lightweight',
+            'description': 'Modelo compacto de Microsoft, buen rendimiento',
+            'use_case': 'Chat básico, tareas sencillas',
+            'min_ram': '4GB'
         },
         {
             'name': 'llama3.2:3b',
             'size': '~2GB',
             'category': 'recommended',
-            'description': 'Modelo ligero para conversación y tareas generales',
-            'use_case': 'Chat y asistencia conversacional'
+            'description': 'Equilibrado entre tamaño y calidad',
+            'use_case': 'Chat y tareas generales',
+            'min_ram': '8GB'
+        },
+        
+        # ===== MODELOS RECOMENDADOS (4-8GB RAM) =====
+        {
+            'name': 'deepseek-coder:6.7b',
+            'size': '~4GB',
+            'category': 'recommended',
+            'description': 'Especializado en generación de código (Python, JS, Java, etc.)',
+            'use_case': 'Generación y análisis de código',
+            'min_ram': '8GB'
         },
         {
             'name': 'qwen2.5-coder:7b',
             'size': '~4.5GB',
             'category': 'recommended',
             'description': 'Excelente para programación multi-lenguaje',
-            'use_case': 'Desarrollo de software'
+            'use_case': 'Desarrollo de software',
+            'min_ram': '8GB'
         },
         {
             'name': 'codellama:7b',
             'size': '~4GB',
             'category': 'popular',
             'description': 'Modelo de Meta especializado en código',
-            'use_case': 'Programación y debugging'
+            'use_case': 'Programación y debugging',
+            'min_ram': '8GB'
         },
         {
             'name': 'mistral:7b',
             'size': '~4GB',
             'category': 'popular',
             'description': 'Modelo versátil de alto rendimiento',
-            'use_case': 'Tareas generales y razonamiento'
+            'use_case': 'Tareas generales y razonamiento',
+            'min_ram': '8GB'
         },
         {
             'name': 'llama3.1:8b',
             'size': '~5GB',
             'category': 'popular',
             'description': 'Última versión de Llama con mejor rendimiento',
-            'use_case': 'Asistente general avanzado'
+            'use_case': 'Asistente general avanzado',
+            'min_ram': '8GB'
         },
-        {
-            'name': 'phi3:mini',
-            'size': '~2GB',
-            'category': 'lightweight',
-            'description': 'Modelo ultra-ligero de Microsoft',
-            'use_case': 'Equipos con recursos limitados'
-        },
+        
+        # ===== MODELOS POTENTES (8-16GB RAM) =====
         {
             'name': 'gemma2:9b',
             'size': '~5.5GB',
             'category': 'latest',
             'description': 'Último modelo de Google, excelente calidad',
-            'use_case': 'Tareas complejas y creativas'
+            'use_case': 'Tareas complejas y creativas',
+            'min_ram': '16GB'
+        },
+        {
+            'name': 'llama3.2:10b',
+            'size': '~6GB',
+            'category': 'high-performance',
+            'description': 'Versión potente de Llama 3.2, mejor razonamiento',
+            'use_case': 'Análisis complejo, razonamiento avanzado',
+            'min_ram': '16GB'
+        },
+        {
+            'name': 'qwen2.5-coder:14b',
+            'size': '~9GB',
+            'category': 'high-performance',
+            'description': 'Versión grande de Qwen, superior en código',
+            'use_case': 'Proyectos grandes, código complejo',
+            'min_ram': '16GB'
+        },
+        {
+            'name': 'mistral-nemo:12b',
+            'size': '~7GB',
+            'category': 'high-performance',
+            'description': 'Nuevo modelo de Mistral, equilibrio perfecto',
+            'use_case': 'Tareas avanzadas multi-propósito',
+            'min_ram': '16GB'
+        },
+        
+        # ===== MODELOS ULTRA-POTENTES (16GB+ RAM) =====
+        {
+            'name': 'llama3.3:70b',
+            'size': '~40GB',
+            'category': 'ultra',
+            'description': '🔥 El más potente de Meta, calidad excepcional',
+            'use_case': 'Tareas muy complejas, máxima calidad',
+            'min_ram': '32GB+',
+            'note': 'Requiere GPU potente o CPU con mucha RAM'
+        },
+        {
+            'name': 'qwen2.5-coder:32b',
+            'size': '~20GB',
+            'category': 'ultra',
+            'description': '🚀 Versión masiva de Qwen, state-of-the-art en código',
+            'use_case': 'Desarrollo profesional, arquitecturas complejas',
+            'min_ram': '32GB+',
+            'note': 'Para workstations profesionales'
+        },
+        {
+            'name': 'deepseek-coder:33b',
+            'size': '~20GB',
+            'category': 'ultra',
+            'description': '💎 Modelo premium de DeepSeek, excelente en código',
+            'use_case': 'Proyectos enterprise, código crítico',
+            'min_ram': '32GB+',
+            'note': 'Máxima precisión en generación de código'
+        },
+        {
+            'name': 'mixtral:8x7b',
+            'size': '~26GB',
+            'category': 'ultra',
+            'description': '⚡ Modelo MoE (Mixture of Experts), rápido y potente',
+            'use_case': 'Tareas diversas de alta complejidad',
+            'min_ram': '32GB+',
+            'note': 'Arquitectura innovadora de expertos'
         }
     ]
     
@@ -531,25 +621,32 @@ def available_models():
         except Exception as e:
             print(f"Error verificando vía API: {e}")
         
-        # Marcar modelos instalados
+        # Marcar modelos instalados - COMPARACIÓN ESTRICTA
         installed_count = 0
         for model in recommended:
-            # Comparación flexible: verificar coincidencia exacta o parcial
+            # Comparación ESTRICTA: solo coincidencia exacta o misma familia con tag diferente
             is_installed = False
             
             for installed_model in installed_models:
-                # Coincidencia exacta
+                # 1. Coincidencia exacta (preferida)
                 if model['name'] == installed_model:
                     is_installed = True
                     break
-                # Coincidencia sin tag (ej: 'qwen2.5-coder' matches 'qwen2.5-coder:7b')
-                if model['name'].split(':')[0] == installed_model.split(':')[0]:
-                    is_installed = True
-                    break
-                # Coincidencia inversa
-                if installed_model in model['name'] or model['name'] in installed_model:
-                    is_installed = True
-                    break
+                
+                # 2. Mismo modelo base pero con tags diferentes
+                # Ejemplo: 'qwen2.5-coder:7b' vs 'qwen2.5-coder:7b-instruct'
+                model_base = model['name'].split(':')[0]
+                installed_base = installed_model.split(':')[0]
+                
+                if model_base == installed_base:
+                    # Verificar que los tags sean compatibles
+                    model_tag = model['name'].split(':')[1] if ':' in model['name'] else None
+                    installed_tag = installed_model.split(':')[1] if ':' in installed_model else None
+                    
+                    # Si ambos tienen el mismo tag o uno no tiene tag, considerar instalado
+                    if model_tag == installed_tag or model_tag is None or installed_tag is None:
+                        is_installed = True
+                        break
             
             model['installed'] = is_installed
             if is_installed:

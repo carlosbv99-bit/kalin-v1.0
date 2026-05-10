@@ -114,6 +114,37 @@ class KalinApp {
             console.warn('⚠️ ResizablePanels no disponible');
         }
 
+        // Code Editor Manager
+        if (window.CodeEditorManager) {
+            window.CodeEditorManager.initialize();
+            this.modules.codeEditor = window.CodeEditorManager;
+            console.log('✅ Code Editor Manager inicializado');
+        } else {
+            console.warn('⚠️ CodeEditorManager no disponible');
+        }
+
+        // WebContainer Manager
+        if (window.WebContainerManager) {
+            // Inicializar WebContainer de forma asíncrona
+            window.WebContainerManager.initialize().then(() => {
+                this.modules.webcontainer = window.WebContainerManager;
+                console.log('✅ WebContainer Manager inicializado');
+            }).catch(error => {
+                console.error('❌ Error inicializando WebContainer:', error);
+            });
+        } else {
+            console.warn('⚠️ WebContainerManager no disponible');
+        }
+
+        // Universal Renderer
+        if (window.UniversalRenderer) {
+            window.UniversalRenderer.initialize();
+            this.modules.renderer = window.UniversalRenderer;
+            console.log('✅ Universal Renderer inicializado');
+        } else {
+            console.warn('⚠️ UniversalRenderer no disponible');
+        }
+
         console.log(`✅ ${Object.keys(this.modules).length} módulos inicializados`);
     }
 

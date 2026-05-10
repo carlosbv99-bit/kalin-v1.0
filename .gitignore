@@ -163,3 +163,118 @@ clean_index.py
 
 # Changelogs temporales
 CHANGELOG_*.md
+
+# ==============================
+# 🗑️ ARCHIVOS ADICIONALES DE DESARROLLO
+# ==============================
+# Archivos de estado y health checks
+health_status.json
+
+# Scripts de preparación y verificación
+prepare_for_*.py
+verify_*.py
+test_*.py
+!tests/
+
+# Scripts de backup específicos
+backup_*.py
+auto_backup_*.py
+setup_auto_backup.py
+
+# Scripts de instalación y inicio específicos
+instalar_*.sh
+iniciar_*.py
+iniciar_*.sh
+reiniciar_*.bat
+
+# PowerShell scripts de mantenimiento
+commit_*.ps1
+prepare_for_*.ps1
+clean_github_trash.ps1
+
+# Python scripts de diagnóstico y reparación
+diagnose*.py
+fix_*.py
+repair*.py
+update_names.py
+crear_readme.py
+generar_pdf.py
+check_code_quality.py
+maintenance.py
+clean_disk_space.py
+limpieza_*.py
+
+# Archivos de documentación temporal
+CHANGES_TODAY.md
+BACKUP_*.md
+CONFIGURAR_*.md
+COMO_PROBAR_*.md
+FRONTEND_*.md
+MIGRACION_*.md
+MULTI_PROVIDER_SUMMARY.md
+NUEVOS_MODELOS_*.md
+QUICK_START_SPECIALISTS.md
+REPARACIONES_*.md
+RUN_TEST.md
+TESTING_GUIDE.md
+DEBUG_GUIDE.md
+EXPERIENCE_MEMORY_GUIDE.md
+TEMPERATURAS_*.md
+SOLUCION_*.md
+CODIGO_LIMPIO_*.md
+LIMPIEZA_*.md
+ROADMAP_*.md
+INTEGRACION_*.md
+ESCALABILIDAD_*.md
+RESUMEN_CORRECCIONES_*.md
+CORRECCION_*.md
+FIX_*.md
+IMPLEMENTACION_*.md
+OPTIMIZACION_*.md
+DIAGRAMA_*.md
+DOWNLOAD_PROGRESS_UPDATE.md
+GITHUB_AUTO_BACKUP.md
+GUIA_DE_USO.md
+GUIA_TESTS.md
+GUIA_MULTIPLES_LLMS.md
+GUIA_LINUX_*.md
+INSTRUCCIONES_*.md
+PREPARACION_*.md
+EVALUACION_*.md
+AUDITORIA_*.md
+EXECUTIVE_SUMMARY.md
+REVIEW_SUMMARY.md
+INFORME_*.md
+INFORME_*.pdf
+ANDROID_SUPPORT.md
+DEPLOYMENTS.md
+DOCKER_DEPLOYMENT.md
+SECURITY.md
+CHECKLIST_*.txt
+EJEMPLOS_PRACTICOS.py
+
+# ==============================
+# 🛡️ ARCHIVOS DE VERIFICACIÓN Y PREPARACIÓN GITHUB
+# ==============================
+verify_github_ready.py
+prepare_for_github.ps1
+GITHUB_BACKUP_GUIDE.md
+BACKUP_INFO.md
+GITHUB_READY_SUMMARY.txt
+
+# ==============================
+# 📝 ARCHIVOS DE ESTADO TEMPORAL
+# ==============================
+*.pid
+*.lock
+.cache/
+temp/
+.tmp/
+
+# ==============================
+# 💾 BACKUPS Y COPIAS ANTIGUAS
+# ==============================
+backups/
+*.zip
+*.tar.gz
+*.7z

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sidebar - Kalin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            padding: 10px 15px;
+            font-size: 24px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+            transition: left 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 98;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .test-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .test-button:hover {
+            background: #0056b3;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    
+    <div class="sidebar" id="sidebar">
+        <h2>Menú Lateral - Test</h2>
+        <p>Este es un test del menú lateral de Kalin</p>
+        <button onclick="toggleSidebar()">Cerrar</button>
+    </div>
+
+    <h1>🧪 Test de Funcionalidad del Sidebar</h1>
+    
+    <div class="test-section">
+        <h2>Estado del Sistema</h2>
+        <div id="status" class="status">Cargando...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Probar Funciones del Sidebar</h2>
+        <button class="test-button" onclick="testToggleSidebar()">1. Probar Toggle Sidebar</button>
+        <button class="test-button" onclick="testExportExperience()">2. Probar Exportar Experiencia</button>
+        <button class="test-button" onclick="testImportExperience()">3. Probar Importar Experiencia</button>
+        <button class="test-button" onclick="testCheckDependencies()">4. Probar Verificar Dependencias</button>
+        <button class="test-button" onclick="testDownloadModels()">5. Probar Descargar Modelos</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Consola de Debug</h2>
+        <div id="console-output" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- Cargar scripts de Kalin -->
+    <script src="/static/js/sidebar-functions.js?v=2"></script>
+    <script src="/static/js/ui-manager.js"></script>
+    
+    <script>
+        // Capturar logs de consola
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addLog(message, type = 'log') {
+            const div = document.createElement('div');
+            div.style.padding = '2px 0';
+            div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog(args.join(' '));
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog(args.join(' '), 'warn');
+        };
+
+        // Actualizar estado
+        function updateStatus() {
+            const status = document.getElementById('status');
+            status.innerHTML = `
+                ✅ toggleSidebar: ${typeof window.toggleSidebar === 'function' ? 'DISPONIBLE' : 'NO DISPONIBLE'}<br>
+                ✅ UIManager: ${typeof window.UIManager === 'object' ? 'INICIALIZADO' : 'NO INICIALIZADO'}<br>
+                ✅ exportExperience: ${typeof window.exportExperience === 'function' ? 'DISPONIBLE' : 'NO DISPONIBLE'}<br>
+                ✅ importExperience: ${typeof window.importExperience === 'function' ? 'DISPONIBLE' : 'NO DISPONIBLE'}<br>
+                ✅ checkDependencies: ${typeof window.checkDependencies === 'function' ? 'DISPONIBLE' : 'NO DISPONIBLE'}<br>
+                ✅ downloadModels: ${typeof window.downloadModels === 'function' ? 'DISPONIBLE' : 'NO DISPONIBLE'}
+            `;
+        }
+
+        // Funciones de test
+        function testToggleSidebar() {
+            console.log('🧪 Probando toggleSidebar...');
+            if (typeof window.toggleSidebar === 'function') {
+                toggleSidebar();
+                console.log('✅ toggleSidebar ejecutado correctamente');
+            } else {
+                console.error('❌ toggleSidebar no está disponible');
+            }
+        }
+
+        function testExportExperience() {
+            console.log('🧪 Probando exportExperience...');
+            if (typeof window.exportExperience === 'function') {
+                exportExperience();
+                console.log('✅ exportExperience ejecutado correctamente');
+            } else {
+                console.error('❌ exportExperience no está disponible');
+            }
+        }
+
+        function testImportExperience() {
+            console.log('🧪 Probando importExperience...');
+            if (typeof window.importExperience === 'function') {
+                importExperience();
+                console.log('✅ importExperience ejecutado correctamente');
+            } else {
+                console.error('❌ importExperience no está disponible');
+            }
+        }
+
+        function testCheckDependencies() {
+            console.log('🧪 Probando checkDependencies...');
+            if (typeof window.checkDependencies === 'function') {
+                checkDependencies();
+                console.log('✅ checkDependencies ejecutado correctamente');
+            } else {
+                console.error('❌ checkDependencies no está disponible');
+            }
+        }
+
+        function testDownloadModels() {
+            console.log('🧪 Probando downloadModels...');
+            if (typeof window.downloadModels === 'function') {
+                downloadModels();
+                console.log('✅ downloadModels ejecutado correctamente');
+            } else {
+                console.error('❌ downloadModels no está disponible');
+            }
+        }
+
+        // Inicializar
+        console.log('========================================');
+        console.log('🧪 Página de test cargada');
+        console.log('========================================');
+        
+        setTimeout(() => {
+            updateStatus();
+            console.log('✅ Estado actualizado');
+        }, 500);
+    </script>
+</body>
+</html>

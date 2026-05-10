@@ -1,0 +1,22 @@
+﻿
+======================================================================
+REPORTE DE PREPARACION PARA GITHUB
+======================================================================
+
+PROYECTO LISTO PARA SUBIR A GITHUB
+
+Archivos protegidos (NO se subiran):
+  - .env (credenciales)
+  - sessions/ (datos personales)
+  - experience_memory/ (memoria)
+  - logs/ (registros)
+  - __pycache__/ (cache Python)
+  - backups/ (copias)
+
+Proximos pasos:
+  1. git add .
+  2. git status (verifica que no haya .env)
+  3. git commit -m "Clean project structure"
+  4. git push origin main
+
+======================================================================

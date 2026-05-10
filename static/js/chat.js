@@ -126,15 +126,22 @@ class ChatManager {
         // Agregar mensaje del asistente
         this.addMessage(responseText, 'assistant');
 
-        // Si hay código, mostrarlo en el panel principal
+        // Si hay código, mostrarlo en el panel principal y renderizar
         if (response.code || this.containsCode(responseText)) {
             const code = response.code || this.extractCode(responseText);
             if (code) {
                 this.displayCodeInMainArea(code);
+                
+                // Intentar renderizar con UniversalRenderer
+                if (window.UniversalRenderer) {
+                    setTimeout(() => {
+                        window.UniversalRenderer.render(code);
+                    }, 300);
+                }
             }
         }
 
-        // Si es HTML y preview está activo, renderizar
+        // Si es HTML y preview está activo, renderizar (fallback)
         if (window.PreviewManager) {
             const code = response.code || this.extractCode(responseText);
             console.log('🔍 Checking for HTML code to render:', {
@@ -210,19 +217,25 @@ class ChatManager {
      * @param {string} code - Código a mostrar
      */
     displayCodeInMainArea(code) {
-        const codeArea = document.querySelector('.code-area');
-        if (!codeArea) return;
+        // Usar el nuevo CodeEditorManager si está disponible
+        if (window.CodeEditorManager) {
+            window.CodeEditorManager.displayGeneratedCode(code);
+        } else {
+            // Fallback al método anterior
+            const codeArea = document.querySelector('.code-area');
+            if (!codeArea) return;
 
-        // Crear elemento de código
-        const codeBlock = document.createElement('pre');
-        codeBlock.className = 'code-block';
-        codeBlock.innerHTML = `<code>${this.escapeHTML(code)}</code>`;
+            // Crear elemento de código
+            const codeBlock = document.createElement('pre');
+            codeBlock.className = 'code-block';
+            codeBlock.innerHTML = `<code>${this.escapeHTML(code)}</code>`;
 
-        // Limpiar área anterior y agregar nuevo código
-        codeArea.innerHTML = '';
-        codeArea.appendChild(codeBlock);
+            // Limpiar área anterior y agregar nuevo código
+            codeArea.innerHTML = '';
+            codeArea.appendChild(codeBlock);
 
-        console.log('✅ Código mostrado en panel principal:', code.length, 'chars');
+            console.log('✅ Código mostrado en panel principal:', code.length, 'chars');
+        }
     }
 
     /**
@@ -245,8 +258,20 @@ class ChatManager {
      * @returns {string|null}
      */
     extractCode(text) {
-        const match = text.match(/```(\w+)?\n([\s\S]*?)```/);
-        return match ? match[2] : null;
+        if (!text) return null;
+        
+        // Buscar bloques de código con formato ```lenguaje\ncódigo```
+        const codeBlockRegex = /```(?:py|python|javascript|js|html|css|json|md)?\s*\n([\s\S]*?)```/i;
+        const match = text.match(codeBlockRegex);
+        
+        if (match && match[1]) {
+            // Limpiar el código extraído (quitar espacios iniciales/finales)
+            return match[1].trim();
+        }
+        
+        // Si no hay bloques de código markdown, buscar patrones de código
+        // Esto es un fallback para código sin formato markdown
+        return null;
     }
 
     /**

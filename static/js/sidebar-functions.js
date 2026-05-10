@@ -113,6 +113,54 @@ if (typeof document !== 'undefined') {
             });
         }
         
+        // Menú desplegable superior derecho
+        const dropdownMenuBtn = document.getElementById('dropdown-menu-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        
+        if (dropdownMenuBtn && dropdownMenu) {
+            dropdownMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isVisible = dropdownMenu.style.display === 'block';
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            });
+            
+            // Cerrar el menú al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                if (!dropdownMenu.contains(e.target) && e.target !== dropdownMenuBtn) {
+                    dropdownMenu.style.display = 'none';
+                }
+            });
+        }
+        
+        // Menús desplegables de la barra superior (Archivo, etc.)
+        const menuBarBtns = document.querySelectorAll('.menu-bar-btn');
+        menuBarBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menuName = this.getAttribute('data-menu');
+                const submenu = document.getElementById('menu-' + menuName);
+                
+                if (submenu) {
+                    // Cerrar otros menús primero
+                    const allSubmenus = document.querySelectorAll('.dropdown-submenu');
+                    allSubmenus.forEach(m => {
+                        if (m !== submenu) m.classList.remove('show');
+                    });
+                    
+                    // Toggle el menú actual
+                    submenu.classList.toggle('show');
+                }
+            });
+        });
+        
+        // Cerrar menús al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.menu-bar-item')) {
+                const allSubmenus = document.querySelectorAll('.dropdown-submenu');
+                allSubmenus.forEach(m => m.classList.remove('show'));
+            }
+        });
+        
         // Agregar event listeners a los botones del sidebar
         const sidebarButtons = document.querySelectorAll('.sidebar-btn');
         
