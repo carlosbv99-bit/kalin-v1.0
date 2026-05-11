@@ -1,0 +1,36 @@
+# Configuration for auto-labeler
+# Labels will be applied based on file paths changed in PR
+
+tests:
+  - tests/**
+  - test_*.py
+
+documentation:
+  - "*.md"
+  - docs/**
+
+frontend:
+  - static/**
+  - templates/**
+
+backend:
+  - agent/**
+  - web.py
+  - main.py
+  - cli.py
+
+ci-cd:
+  - .github/workflows/**
+  - Dockerfile
+  - docker-compose.yml
+
+dependencies:
+  - requirements.txt
+  - setup.py
+
+configuration:
+  - .env.example
+  - .gitignore
+  - "*.toml"
+  - "*.cfg"
+  - "*.ini"

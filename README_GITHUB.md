@@ -3,6 +3,8 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI/CD](https://github.com/carlosbv99/kalin/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/carlosbv99/kalin/actions/workflows/ci-cd.yml)
+[![Tests](https://img.shields.io/badge/Tests-60%20unitarios-brightgreen.svg)](tests/)
 
 Kalin AI es un **IDE conversacional** que permite generar, modificar y gestionar código mediante chat natural. Utiliza un sistema avanzado de parches incrementales para mantener la integridad del código mientras evoluciona el proyecto.
 
@@ -147,15 +149,37 @@ GROQ_MODEL=llama-3.1-8b-instant
 
 ## 🧪 Testing
 
-Ejecutar tests:
+### Suite Completa de Tests
+
+El proyecto incluye **60 tests unitarios** que cubren el core del agente:
+
 ```bash
+# Ejecutar todos los tests
 pytest tests/ -v
+
+# Con script especializado (recomendado)
+python run_all_tests.py --coverage --html-report
 ```
 
-Tests disponibles:
-- `test_general_workflow.py` - Flujo completo
-- `test_memoria_contextual.py` - Memoria conversacional
-- `test_flow_and_functionality.py` - Funcionalidades básicas
+### Tests Disponibles
+
+- ✅ `test_patch_manager.py` - Sistema de parches (15 tests)
+- ✅ `test_orchestration_layer.py` - Capa de orquestación (25 tests)
+- ✅ `test_memory_manager.py` - Gestor de memoria (20 tests)
+- ✅ `test_general_workflow.py` - Flujo completo
+- ✅ `test_memoria_contextual.py` - Memoria conversacional
+- ✅ `test_flow_and_functionality.py` - Funcionalidades básicas
+
+### CI/CD Automatizado
+
+Cada push o pull request ejecuta automáticamente:
+- 🧪 Tests unitarios (Python 3.11 y 3.12)
+- 🔍 Análisis estático (Flake8, Black, Pylint, MyPy)
+- 🛡️ Escaneo de seguridad (Bandit, Safety)
+- 📊 Reporte de cobertura (Codecov)
+- 🐳 Build Docker (en main)
+
+Ver `.github/workflows/ci-cd.yml` para detalles.
 
 ## 🐳 Docker (Opcional)
 

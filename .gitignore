@@ -312,3 +312,13 @@ MENUS_HERRAMIENTAS_DIFFS.md
 IMPLEMENTACION_PATCHES_RESUMEN.md
 PATCH_SYSTEM.md
 ejemplo_patch_system.py
+
+# ==============================
+# 🔬 TESTING Y COBERTURA
+# ==============================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+bandit-report.json
+safety-report.json
