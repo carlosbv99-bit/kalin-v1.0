@@ -5,6 +5,14 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
 import difflib
+import logging
+
+# Configurar logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
+logger = logging.getLogger('kalin.web')
 
 from agent.core.orchestrator import Orchestrator
 from agent.analyzer import analizar_codigo
@@ -36,6 +44,22 @@ def add_security_headers(response):
     return response
 
 orchestrator = Orchestrator()
+
+# Verificación de configuración activa
+active_provider = os.getenv('ACTIVE_PROVIDER', 'ollama')
+# Normalizar nombre del proveedor (aceptar 'grok' o 'groq')
+if active_provider.lower() in ['grok', 'groq']:
+    active_provider_normalized = 'GROQ'
+else:
+    active_provider_normalized = active_provider.upper()
+    
+print(f"\n🤖 Proveedor Activo: {active_provider_normalized}")
+if active_provider.lower() in ['grok', 'groq']:
+    print(f"🔑 Groq API Key configurada: {'Sí' if os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY') else 'No'}")
+    print(f"📦 Modelo Groq: {os.getenv('GROK_MODEL', 'llama-3.1-8b-instant')}")
+elif active_provider.lower() == 'ollama':
+    print(f"📦 Modelo Ollama: {os.getenv('OLLAMA_MODEL', 'deepseek-coder:6.7b')}")
+print("="*50 + "\n")
 
 MODO_SEGURO = True
 RUTA_PROYECTO = ""
@@ -76,6 +100,522 @@ def llm_status():
     except Exception as exc:
         return jsonify({
             "respuesta": f"❌ Error al obtener estado LLM: {str(exc)}"
+        }), 500
+
+@app.route("/orchestration/stats")
+def orchestration_stats():
+    """Estadísticas de la capa de orquestación"""
+    try:
+        from agent.core.orchestration_layer import get_orchestration_layer
+        orchestration = get_orchestration_layer()
+        stats = orchestration.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "orchestration_stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/memory/stats")
+def memory_stats():
+    """Estadísticas del gestor de memoria"""
+    try:
+        from agent.core.memory_manager import get_memory_manager
+        memory_mgr = get_memory_manager()
+        stats = memory_mgr.get_manager_stats()
+        
+        return jsonify({
+            "status": "success",
+            "memory_stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/memory/session/<session_id>")
+def memory_session(session_id):
+    """Obtiene historial de una sesión específica"""
+    try:
+        from agent.core.memory_manager import get_memory_manager
+        memory_mgr = get_memory_manager()
+        history = memory_mgr.get_history(session_id, limit=20)
+        session_stats = memory_mgr.get_session_stats(session_id)
+        
+        return jsonify({
+            "status": "success",
+            "session_id": session_id,
+            "history": history,
+            "stats": session_stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/memory/clear/<session_id>", methods=['POST'])
+def memory_clear(session_id):
+    """Limpia la memoria de una sesión"""
+    try:
+        from agent.core.memory_manager import get_memory_manager
+        memory_mgr = get_memory_manager()
+        memory_mgr.clear_session(session_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Sesión {session_id} limpiada"
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/tools/list")
+def tools_list():
+    """Lista todas las tools disponibles"""
+    try:
+        from agent.core.tool_manager import get_tool_manager
+        tool_mgr = get_tool_manager()
+        tools = tool_mgr.get_available_tools()
+        
+        return jsonify({
+            "status": "success",
+            "tools": tools,
+            "total": len(tools)
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/tools/stats")
+def tools_stats():
+    """Estadísticas de uso de tools"""
+    try:
+        from agent.core.tool_manager import get_tool_manager
+        tool_mgr = get_tool_manager()
+        stats = tool_mgr.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "tool_stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/context/status")
+def context_status():
+    """Estado actual de todos los contextos modulares"""
+    try:
+        from agent.core.context_manager import get_context_manager
+        context_mgr = get_context_manager()
+        summary = context_mgr.get_context_summary()
+        
+        return jsonify({
+            "status": "success",
+            "context_summary": summary
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/context/full-prompt", methods=['POST'])
+def context_full_prompt():
+    """Genera prompt completo con todos los contextos"""
+    try:
+        from agent.core.context_manager import get_context_manager
+        data = request.get_json()
+        user_query = data.get('query', '')
+        
+        context_mgr = get_context_manager()
+        full_prompt = context_mgr.build_full_prompt(user_query)
+        
+        return jsonify({
+            "status": "success",
+            "prompt": full_prompt,
+            "length": len(full_prompt),
+            "sections": context_mgr.get_context_summary()
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/project/state")
+def project_state():
+    """Obtiene el estado actual del proyecto"""
+    try:
+        from agent.core.project_state import get_active_project_state
+        state = get_active_project_state()
+        
+        if not state:
+            return jsonify({
+                "status": "error",
+                "message": "No hay proyecto activo"
+            }), 404
+        
+        return jsonify({
+            "status": "success",
+            "project_state": state.get_state(),
+            "summary": state.get_summary()
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/project/tasks", methods=['GET', 'POST'])
+def project_tasks():
+    """Gestiona tareas del proyecto"""
+    try:
+        from agent.core.project_state import get_active_project_state
+        state = get_active_project_state()
+        
+        if not state:
+            return jsonify({
+                "status": "error",
+                "message": "No hay proyecto activo"
+            }), 404
+        
+        if request.method == 'POST':
+            # Crear nueva tarea
+            data = request.get_json()
+            state.add_task(data)
+            
+            return jsonify({
+                "status": "success",
+                "message": "Tarea creada",
+                "tasks": state.get_summary()['total_tasks']
+            })
+        else:
+            # Listar tareas
+            status_filter = request.args.get('status')
+            
+            if status_filter:
+                tasks = state.get_tasks_by_status(status_filter)
+            else:
+                tasks = state.state['tasks']
+            
+            return jsonify({
+                "status": "success",
+                "tasks": tasks,
+                "total": len(tasks)
+            })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/project/scan", methods=['POST'])
+def project_scan():
+    """Re-escanea el proyecto y actualiza el estado"""
+    try:
+        from agent.core.project_state import get_active_project_state
+        state = get_active_project_state()
+        
+        if not state:
+            return jsonify({
+                "status": "error",
+                "message": "No hay proyecto activo"
+            }), 404
+        
+        state.scan_project()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Proyecto escaneado",
+            "summary": state.get_summary()
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/patch/apply", methods=['POST'])
+def patch_apply():
+    """Aplica un parche a un archivo"""
+    try:
+        from agent.core.patch_system import get_patch_manager
+        data = request.get_json()
+        
+        file_path = data.get('file_path')
+        diff = data.get('diff')
+        new_content = data.get('new_content')
+        description = data.get('description', '')
+        
+        if not file_path:
+            return jsonify({
+                "status": "error",
+                "message": "file_path requerido"
+            }), 400
+        
+        patch_mgr = get_patch_manager()
+        
+        # Si se proporciona new_content, crear patch automáticamente
+        if new_content and not diff:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_content = f.read()
+            
+            patch = patch_mgr.create_patch(
+                file_path=file_path,
+                original_content=original_content,
+                new_content=new_content,
+                description=description
+            )
+            
+            success = patch_mgr.apply_patch(patch)
+        else:
+            # Aplicar diff directamente (implementación futura)
+            return jsonify({
+                "status": "error",
+                "message": "Usa new_content por ahora"
+            }), 400
+        
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": "Parche aplicado" if success else "Error al aplicar parche",
+            "patch_info": patch.to_dict() if success else None
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/patch/undo", methods=['POST'])
+def patch_undo():
+    """Revierte el último parche aplicado"""
+    try:
+        from agent.core.patch_system import get_patch_manager
+        data = request.get_json()
+        
+        file_path = data.get('file_path')  # Opcional
+        
+        patch_mgr = get_patch_manager()
+        success = patch_mgr.undo_last_patch(file_path)
+        
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": "Parche revertido" if success else "No hay parche para revertir"
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/patch/history")
+def patch_history():
+    """Obtiene historial de parches"""
+    try:
+        from agent.core.patch_system import get_patch_manager
+        
+        file_path = request.args.get('file_path')
+        limit = request.args.get('limit', type=int)
+        
+        patch_mgr = get_patch_manager()
+        history = patch_mgr.get_patch_history(file_path, limit)
+        stats = patch_mgr.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "history": history,
+            "stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/api/revert", methods=['POST'])
+def api_revert():
+    """Revierte el último cambio usando el nuevo PatchManager"""
+    try:
+        from agent.core.orchestration_layer import get_orchestration_layer
+        data = request.get_json()
+        session_id = data.get('session_id', 'default')
+        
+        orchestrator = get_orchestration_layer()
+        reverted_files = orchestrator.revert_last_change(session_id)
+        
+        if reverted_files:
+            return jsonify({
+                "success": True,
+                "files": reverted_files,
+                "message": "Cambio revertido exitosamente"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "No hay cambios para revertir"
+            })
+    except Exception as exc:
+        logger.error(f"Error al revertir: {exc}")
+        return jsonify({
+            "success": False,
+            "message": str(exc)
+        }), 500
+
+@app.route("/api/history")
+def api_history():
+    """Obtiene historial de cambios del PatchManager"""
+    try:
+        from agent.core.orchestration_layer import get_orchestration_layer
+        session_id = request.args.get('session_id', 'default')
+        limit = request.args.get('limit', type=int, default=10)
+        
+        orchestrator = get_orchestration_layer()
+        history = orchestrator.get_change_history(session_id, limit)
+        
+        return jsonify(history)
+    except Exception as exc:
+        logger.error(f"Error al obtener historial: {exc}")
+        return jsonify({
+            "error": str(exc)
+        }), 500
+
+@app.route("/events/history")
+def events_history():
+    """Obtiene historial de eventos"""
+    try:
+        from agent.core.event_bus import get_event_bus
+        
+        event_name = request.args.get('event_name')
+        limit = request.args.get('limit', type=int, default=50)
+        
+        event_bus = get_event_bus()
+        history = event_bus.get_event_history(limit, event_name)
+        stats = event_bus.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "events": history,
+            "stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/events/stats")
+def events_stats():
+    """Estadísticas del event bus"""
+    try:
+        from agent.core.event_bus import get_event_bus
+        
+        event_bus = get_event_bus()
+        stats = event_bus.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/tasks/stats")
+def tasks_stats():
+    """Estadísticas del task manager"""
+    try:
+        from agent.core.task_identity import get_task_manager
+        
+        task_mgr = get_task_manager()
+        stats = task_mgr.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/tasks/session/<session_id>")
+def tasks_session(session_id):
+    """Obtiene tareas de una sesión específica"""
+    try:
+        from agent.core.task_identity import get_task_manager
+        
+        limit = request.args.get('limit', type=int, default=50)
+        
+        task_mgr = get_task_manager()
+        tasks = task_mgr.get_session_tasks(session_id, limit)
+        
+        return jsonify({
+            "status": "success",
+            "session_id": session_id,
+            "tasks": tasks,
+            "total": len(tasks)
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/tasks/active")
+def tasks_active():
+    """Obtiene tareas activas actualmente"""
+    try:
+        from agent.core.task_identity import get_task_manager
+        
+        session_id = request.args.get('session_id')
+        
+        task_mgr = get_task_manager()
+        active = task_mgr.get_active_tasks(session_id)
+        
+        return jsonify({
+            "status": "success",
+            "active_tasks": [t.to_dict() for t in active],
+            "count": len(active)
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
+        }), 500
+
+@app.route("/sandbox/stats")
+def sandbox_stats():
+    """Estadísticas del sandbox"""
+    try:
+        from agent.core.tool_sandbox import get_sandbox_executor
+        
+        executor = get_sandbox_executor()
+        stats = executor.get_stats()
+        
+        return jsonify({
+            "status": "success",
+            "sandbox_stats": stats
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": str(exc)
         }), 500
 
 @app.route("/health")
@@ -714,13 +1254,85 @@ def create_venv():
             'message': f'❌ Error: {str(e)}'
         }), 500
 
+@app.route("/system/list-models")
+def list_models():
+    """Lista los modelos disponibles (Locales Ollama + Nube API)"""
+    import subprocess
+    
+    try:
+        all_models = []
+        
+        # 1. Obtener modelos locales de Ollama
+        try:
+            result = subprocess.run(
+                ['ollama', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                for line in lines[1:]:
+                    if line.strip():
+                        parts = line.split()
+                        if parts:
+                            all_models.append(f"{parts[0]} (Local)")
+        except (FileNotFoundError, Exception):
+            pass # Si Ollama no está, simplemente continuamos con los de nube
+        
+        # 2. Obtener modelos de Nube configurados en .env
+        from dotenv import load_dotenv
+        load_dotenv()
+        
+        if os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY'):
+            model_name = os.getenv('GROK_MODEL', 'llama-3.1-8b-instant')
+            # Mostrar una etiqueta más amigable con indicador de nube
+            display_name = f"{model_name} (Nube - Groq)"
+            all_models.append(display_name)
+        
+        if os.getenv('OPENAI_API_KEY'):
+            all_models.append(f"{os.getenv('OPENAI_MODEL', 'gpt-4o')} (Nube - OpenAI)")
+            
+        if os.getenv('ANTHROPIC_API_KEY'):
+            all_models.append(f"{os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet')} (Nube - Anthropic)")
+
+        if not all_models:
+            return jsonify({
+                'status': 'error',
+                'message': '❌ No hay modelos locales ni APIs de nube configuradas.'
+            }), 404
+
+        # Agregar información sobre qué proveedores están configurados
+        providers_configured = {
+            'ollama': len([m for m in all_models if '(Local)' in m]) > 0,
+            'groq': bool(os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY')),
+            'openai': bool(os.getenv('OPENAI_API_KEY')),
+            'anthropic': bool(os.getenv('ANTHROPIC_API_KEY')),
+            'gemini': bool(os.getenv('GEMINI_API_KEY')),
+            'mistral': bool(os.getenv('MISTRAL_API_KEY'))
+        }
+
+        return jsonify({
+            'status': 'success',
+            'models': all_models,
+            'count': len(all_models),
+            'providers_configured': providers_configured
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error al listar modelos: {str(e)}'
+        }), 500
+
 @app.route("/system/set-model", methods=['POST'])
 def set_model():
-    """Cambia el modelo activo de Ollama y guarda en .env"""
+    """Cambia el modelo activo (Local Ollama o Nube API) y guarda en .env"""
     data = request.get_json()
-    model_name = data.get('model', '')
+    model_raw = data.get('model', '')
     
-    if not model_name:
+    if not model_raw:
         return jsonify({
             'status': 'error',
             'message': '❌ No se especificó un modelo'
@@ -729,61 +1341,131 @@ def set_model():
     try:
         from agent.llm.provider_manager import get_manager
         from agent.llm.config import LLMConfig
+        from dotenv import load_dotenv
+        
+        # Limpiar la etiqueta (ej: "grok-beta (Nube - xAI)" -> "grok-beta")
+        model_name = model_raw.split(' (')[0].strip()
         
         manager = get_manager()
+        is_cloud = "(Nube" in model_raw
         
-        # Verificar que el modelo está disponible
-        if 'ollama' in manager.providers:
-            ollama_provider = manager.providers['ollama']
-            if hasattr(ollama_provider, 'is_model_available'):
-                if not ollama_provider.is_model_available(model_name):
-                    return jsonify({
-                        'status': 'error',
-                        'message': f'❌ Modelo "{model_name}" no está instalado en Ollama'
-                    }), 404
-        
-        # Actualizar variable de entorno
-        os.environ['OLLAMA_MODEL'] = model_name
-        
+        # Determinar el tipo de modelo y actualizar variables de entorno
+        if is_cloud:
+            # Detectar proveedor por el nombre del modelo o contexto
+            provider_type = "GROK"  # Default para este caso
+            
+            # Detectar proveedor basado en el nombre del modelo
+            if 'OpenAI' in model_raw:
+                provider_type = "OPENAI"
+            elif 'Anthropic' in model_raw:
+                provider_type = "ANTHROPIC"
+            elif 'Gemini' in model_raw:
+                provider_type = "GEMINI"
+            elif 'Mistral' in model_raw:
+                provider_type = "MISTRAL"
+            
+            env_var_model = f"{provider_type}_MODEL"
+            env_var_key = f"{provider_type}_API_KEY"
+            
+            # Si se proporcionó una API Key, guardarla en .env
+            api_key = data.get('api_key')
+            if api_key:
+                os.environ[env_var_key] = api_key
+            
+            # Verificar que tengamos la API Key
+            if not os.getenv(env_var_key):
+                return jsonify({
+                    'status': 'error',
+                    'message': f'❌ No se encontró la API Key para {provider_type}'
+                }), 400
+                
+            os.environ[env_var_model] = model_name
+            # Normalizar provider a 'groq' (aceptar 'grok' como alias)
+            normalized_provider = 'groq' if provider_type.lower() in ['grok', 'groq'] else provider_type.lower()
+            os.environ['ACTIVE_PROVIDER'] = normalized_provider
+            
+        else:
+            # Es un modelo local de Ollama
+            if 'ollama' in manager.providers:
+                ollama_provider = manager.providers['ollama']
+                if hasattr(ollama_provider, 'is_model_available'):
+                    if not ollama_provider.is_model_available(model_name):
+                        return jsonify({
+                            'status': 'error',
+                            'message': f'❌ Modelo "{model_name}" no está instalado en Ollama'
+                        }), 404
+            
+            os.environ['OLLAMA_MODEL'] = model_name
+            os.environ['ACTIVE_PROVIDER'] = 'ollama'
+
         # Guardar en archivo .env para persistencia
         env_path = os.path.join(os.getcwd(), '.env')
         if os.path.exists(env_path):
-            # Leer contenido actual
             with open(env_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
-            # Buscar y actualizar línea OLLAMA_MODEL
-            updated = False
-            new_lines = []
+            updated_lines = []
+            model_updated = False
+            provider_updated = False
+            
             for line in lines:
-                if line.startswith('OLLAMA_MODEL='):
-                    new_lines.append(f'OLLAMA_MODEL={model_name}\n')
-                    updated = True
+                # Actualizar la variable del modelo específico
+                if is_cloud and line.startswith(f"{provider_type}_MODEL="):
+                    updated_lines.append(f"{env_var_model}={model_name}\n")
+                    model_updated = True
+                elif not is_cloud and line.startswith('OLLAMA_MODEL='):
+                    updated_lines.append(f'OLLAMA_MODEL={model_name}\n')
+                    model_updated = True
+                # Actualizar la API Key si se proporcionó
+                elif is_cloud and api_key and line.startswith(f"{provider_type}_API_KEY="):
+                    updated_lines.append(f"{env_var_key}={api_key}\n")
+                # Actualizar el proveedor activo
+                elif line.startswith('ACTIVE_PROVIDER='):
+                    # Normalizar a 'groq' si es 'grok'
+                    current_provider = os.environ['ACTIVE_PROVIDER']
+                    normalized = 'groq' if current_provider.lower() in ['grok', 'groq'] else current_provider
+                    updated_lines.append(f"ACTIVE_PROVIDER={normalized}\n")
+                    provider_updated = True
                 else:
-                    new_lines.append(line)
+                    updated_lines.append(line)
             
-            # Si no existía, agregarla
-            if not updated:
-                new_lines.append(f'\nOLLAMA_MODEL={model_name}\n')
+            # Agregar líneas faltantes si no existían
+            if not model_updated:
+                updated_lines.append(f'{env_var_model if is_cloud else "OLLAMA_MODEL"}={model_name}\n')
+            if not provider_updated:
+                # Normalizar a 'groq' si es 'grok'
+                current_provider = os.environ['ACTIVE_PROVIDER']
+                normalized = 'groq' if current_provider.lower() in ['grok', 'groq'] else current_provider
+                updated_lines.append(f'ACTIVE_PROVIDER={normalized}\n')
+            # Agregar API Key si es cloud y se proporcionó pero no estaba en .env
+            if is_cloud and api_key:
+                api_key_exists = any(line.startswith(f"{provider_type}_API_KEY=") for line in lines)
+                if not api_key_exists:
+                    updated_lines.append(f'{env_var_key}={api_key}\n')
             
-            # Escribir archivo actualizado
             with open(env_path, 'w', encoding='utf-8') as f:
-                f.writelines(new_lines)
+                f.writelines(updated_lines)
         
-        # Recargar configuración del manager
-        manager.config = LLMConfig()
+        # Recargar configuración del manager para aplicar cambios inmediatamente
+        load_dotenv(override=True)
         
-        # Actualizar modelo en el proveedor Ollama
-        if 'ollama' in manager.providers:
-            manager.providers['ollama'].model = model_name
+        # Destruir el singleton del manager para que se recree con la nueva config
+        import agent.llm.provider_manager as pm
+        pm._manager = None  # Forzar recreación del singleton
+        
+        # Obtener nuevo manager con configuración actualizada
+        manager = get_manager()
         
         return jsonify({
             'status': 'success',
-            'message': f'✅ Modelo cambiado a: {model_name}\n\n💾 Configuración guardada permanentemente.\nKalin usará este modelo incluso después de reiniciar.',
+            'message': f'✅ Modelo activado: {model_name}\nProveedor: {"Nube (" + provider_type + ")" if is_cloud else "Local (Ollama)"}',
             'model': model_name
         })
     
     except Exception as e:
+        print(f"Error en set_model: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'status': 'error',
             'message': f'❌ Error al cambiar modelo: {str(e)}'
@@ -791,35 +1473,32 @@ def set_model():
 
 @app.route("/system/current-model")
 def current_model():
-    """Obtiene el modelo actualmente activo y lista de instalados con detalles"""
+    """Obtiene el modelo actualmente activo (Local o Nube)"""
     try:
         from agent.llm.provider_manager import get_manager
         import os
         import subprocess
         
         manager = get_manager()
+        active_provider = os.getenv('ACTIVE_PROVIDER', 'ollama').lower()
         
-        current = os.getenv('OLLAMA_MODEL', 'deepseek-coder:6.7b')
+        # Normalizar nombre del proveedor (aceptar 'grok' o 'groq')
+        if active_provider in ['grok', 'groq']:
+            active_provider = 'groq'
         
-        # Forzar refresh de modelos Ollama
+        # Determinar el modelo actual basado en el proveedor activo
+        if active_provider == 'groq':
+            model_name = os.getenv('GROK_MODEL', 'llama-3.1-8b-instant')
+            current = f"{model_name} (Nube - Groq)"
+        elif active_provider == 'openai':
+            current = os.getenv('OPENAI_MODEL', 'gpt-4-turbo') + ' (Nube - OpenAI)'
+        else:
+            current = os.getenv('OLLAMA_MODEL', 'deepseek-coder:latest') + ' (Local)'
+        
+        # Obtener modelos instalados de Ollama (solo si es relevante)
         installed_models = []
         model_details = []
         
-        # Método 1: Usar API de Ollama a través del proveedor
-        if 'ollama' in manager.providers:
-            ollama_provider = manager.providers['ollama']
-            # Forzar actualización de la lista de modelos
-            if hasattr(ollama_provider, 'refresh_models'):
-                try:
-                    installed_models = ollama_provider.refresh_models()
-                except Exception as e:
-                    print(f"Error usando API: {e}")
-            elif hasattr(ollama_provider, 'get_available_models'):
-                installed_models = ollama_provider.get_available_models()
-        else:
-            print("Proveedor Ollama no encontrado")
-        
-        # Método 2: Usar CLI de Ollama como respaldo
         try:
             result = subprocess.run(
                 ['ollama', 'list'],
@@ -830,32 +1509,25 @@ def current_model():
             
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')[1:]  # Saltar header
-                cli_models = []
                 for line in lines:
                     if line.strip():
                         parts = line.split()
-                        if len(parts) >= 3:
+                        if parts:
                             model_name = parts[0]
-                            model_size = parts[1] if len(parts) > 1 else 'Unknown'
+                            installed_models.append(model_name)
                             model_details.append({
                                 'name': model_name,
-                                'size': model_size,
+                                'size': parts[1] if len(parts) > 1 else 'Unknown',
                                 'installed': True
                             })
-                            cli_models.append(model_name)
-                            # Agregar a installed_models si no está
-                            if model_name not in installed_models:
-                                installed_models.append(model_name)
-        except FileNotFoundError:
-            print("Comando 'ollama' no encontrado. ¿Está instalado?")
-        except Exception as e:
-            print(f"Error obteniendo detalles de modelos: {e}")
+        except Exception:
+            pass # Si Ollama no está, no pasa nada
         
         return jsonify({
             'status': 'success',
             'current_model': current,
             'installed_models': installed_models,
-            'model_details': model_details if model_details else [{'name': m, 'size': 'Unknown', 'installed': True} for m in installed_models]
+            'model_details': model_details
         })
     except Exception as e:
         print(f"❌ Error en /system/current-model: {e}")
@@ -1318,22 +1990,16 @@ def chat():
     data = request.json or {}
     mensaje = (data.get("mensaje") or data.get("command") or data.get("message") or "").strip()
     
-    # LOG CRÍTICO: Detectar todas las peticiones
-    import logging
-    logger = logging.getLogger('kalin')
-    logger.warning(f"\n{'='*80}\n🔴 PETICIÓN /chat RECIBIDA\nMensaje: '{mensaje[:100]}'\nSession ID: {data.get('session_id', 'NUEVA')}\n{'='*80}")
-    
     # Obtener o generar session_id para mantener contexto conversacional
     session_id = data.get("session_id")
     if not session_id:
-        # Generar nuevo session_id solo si no se proporciona
         import time
         session_id = f"session_{int(time.time())}"
 
     estado = {
         "ruta_proyecto": RUTA_PROYECTO,
         "ultimo_fix": ULTIMO_FIX,
-        "session_id": session_id  # Pasar session_id al orchestrator
+        "session_id": session_id
     }
 
     utils = {
@@ -1349,32 +2015,36 @@ def chat():
     }
 
     try:
-        response = orchestrator.handle(mensaje, estado, utils)
+        # Usar la nueva capa de orquestación
+        from agent.core.orchestration_layer import get_orchestration_layer
+        orchestration = get_orchestration_layer()
         
-        # Incluir session_id en la respuesta para que el frontend lo reenvíe
-        if hasattr(response, 'get_json'):
-            response_data = response.get_json()
-            response_data['session_id'] = session_id
-            
-            # DEBUG: Log de la respuesta antes de enviar
-            import logging
-            logger = logging.getLogger('kalin')
-            logger.info(f"Sending response with keys: {list(response_data.keys())}")
-            if 'respuesta' in response_data:
-                logger.info(f"Response length: {len(response_data['respuesta'])} chars")
-                # Verificar si hay caracteres problemáticos
-                double_quotes_count = response_data['respuesta'].count('"')
-                if double_quotes_count > 0:
-                    logger.warning(f"Response contains {double_quotes_count} double quotes")
-            
-            # jsonify escapará automáticamente todos los caracteres especiales
-            return jsonify(response_data)
-        return response
+        # Procesar a través de la capa de orquestación
+        response_data = orchestration.process_request(mensaje, estado, utils)
         
+        # Incluir session_id en la respuesta
+        response_data['session_id'] = session_id
+        
+        return jsonify(response_data)
+        
+    except ImportError as import_err:
+        logger.error(f"❌ Error de importación: {import_err}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "respuesta": f"❌ Error de importación: {str(import_err)}",
+            "session_id": session_id,
+            "error_details": str(import_err)
+        }), 500
     except Exception as exc:
+        logger.error(f"❌ Error interno en /chat: {exc}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "respuesta": f"❌ Error interno: {str(exc)}",
-            "session_id": session_id
+            "session_id": session_id,
+            "error_type": type(exc).__name__,
+            "error_details": str(exc)
         }), 500
 
     RUTA_PROYECTO = estado.get("ruta_proyecto", RUTA_PROYECTO)

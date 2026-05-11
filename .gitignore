@@ -278,3 +278,37 @@ backups/
 *.zip
 *.tar.gz
 *.7z
+
+# ==============================
+# 🧹 ARCHIVOS DE LIMPIEZA Y PREPARACIÓN GITHUB
+# ==============================
+clean_for_github.py
+clean_copy_project.py
+clean_copy_project.bat
+auto_github_prep.py
+auto_github_prep.ps1
+prepare_for_github.ps1
+verify_before_github.py
+verify_github_ready.py
+commit_and_push.ps1
+GITHUB_*.md
+BACKUP_*.md
+LISTO_PARA_GITHUB.md
+INICIO_RAPIDO_GITHUB.txt
+COMO_USAR_SCRIPTS_GITHUB.md
+SCRIPTS_AUTOMATICOS.md
+AUTO_GITHUB_INSTRUCTIONS.txt
+INDICE_ARCHIVOS_GITHUB.md
+RESUMEN_EJECUTIVO_GITHUB.md
+GITHUB_CHECKLIST*.md
+GITHUB_PREP_REPORT.txt
+GITHUB_PREPARATION_SUMMARY.md
+DELETE_BACKUPS.bat
+
+# ==============================
+# 📚 DOCUMENTACIÓN REDUNDANTE RECIENTE
+# ==============================
+MENUS_HERRAMIENTAS_DIFFS.md
+IMPLEMENTACION_PATCHES_RESUMEN.md
+PATCH_SYSTEM.md
+ejemplo_patch_system.py

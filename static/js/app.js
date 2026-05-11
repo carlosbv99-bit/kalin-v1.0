@@ -171,6 +171,16 @@ class KalinApp {
             }, 250);
         });
 
+        // Atajo de teclado Ctrl+` para toggle terminal
+        window.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.key === '`') {
+                event.preventDefault();
+                if (typeof toggleTerminal === 'function') {
+                    toggleTerminal();
+                }
+            }
+        });
+
         console.log('✅ Event listeners globales configurados');
     }
 

@@ -1,214 +1,208 @@
-# 🚀 Preparación para GitHub - Kalin v3.0
+# Kalin AI - Asistente de Programación Conversacional
 
-> **Estado:** ✅ COMPLETAMENTE LISTO PARA SUBIR A GITHUB
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Este directorio contiene todos los recursos necesarios para preparar el proyecto Kalin v3.0 para subir a GitHub de forma segura.
+Kalin AI es un **IDE conversacional** que permite generar, modificar y gestionar código mediante chat natural. Utiliza un sistema avanzado de parches incrementales para mantener la integridad del código mientras evoluciona el proyecto.
 
----
+## ✨ Características Principales
 
-## ⚡ Inicio Rápido (30 segundos)
+### 🤖 Interfaz Conversacional
+- Chat natural para crear y modificar código
+- Soporte multi-lenguaje (HTML, CSS, Python, JavaScript, Java, C/C++)
+- Preview en tiempo real para código web
+- Terminal integrado para ejecución de comandos
 
-### 🤖 OPCIÓN TOTALMENTE AUTOMÁTICA (Recomendado)
+### 🔧 Sistema de Parches Inteligente
+- Modificaciones incrementales sin regenerar archivos completos
+- Versionado interno con snapshots automáticos
+- Undo/Redo completo de cambios
+- Historial detallado de todas las modificaciones
+- Regiones protegidas (locks semánticos)
 
-**Windows (PowerShell - Más fácil):**
-```
-.uto_github_prep.ps1
-```
-Este script hace TODO automáticamente e incluso puede hacer commit por ti.
+### 🎯 Bloqueo de Lenguaje por Sesión
+- Mantiene consistencia de lenguaje durante toda la sesión
+- Prevención automática de cambios de lenguaje no deseados
+- Detección inteligente de contexto
 
-**Todos los sistemas (Python):**
+### 🛡️ Seguridad y Estabilidad
+- Sandbox seguro para ejecución de código
+- Validación de inputs y sanitización
+- Health monitoring automático
+- Manejo robusto de errores
+
+### 💾 Gestión de Memoria
+- Memoria conversacional persistente
+- Contexto selectivo optimizado
+- Experiencia acumulativa (aprendizaje continuo)
+
+## 🚀 Inicio Rápido
+
+### Prerrequisitos
+- Python 3.11 o superior
+- pip (gestor de paquetes de Python)
+
+### Instalación
+
+1. **Clonar el repositorio:**
 ```bash
-python auto_github_prep.py
-```
-Verifica, limpia y prepara todo automáticamente.
-
-### Windows (Muy Fácil)
-```
-Doble clic en: prepare_github.bat
+git clone https://github.com/carlosbv99/kalin.git
+cd kalin
 ```
 
-### Todos los sistemas (Manual)
+2. **Instalar dependencias:**
 ```bash
-python verify_github_ready.py
-python auto_prepare_github.py
-git add . && git commit -m "Ready" && git push
+pip install -r requirements.txt
 ```
 
----
-
-## 📁 ¿Qué hay aquí?
-
-### Scripts de Automatización
-- `auto_github_prep.py` - ⭐ TOTALMENTE AUTOMÁTICO (Python)
-- `auto_github_prep.ps1` - ⭐ TOTALMENTE AUTOMÁTICO (PowerShell con commit automático)
-- `verify_github_ready.py` - Verificación de seguridad
-- `prepare_for_github.ps1` - PowerShell (Windows avanzado)
-- `prepare_github.bat` - Batch (Windows fácil)
-- `auto_prepare_github.py` - Preparación completa
-- `clean_for_github.py` - Limpieza rápida
-
-### Documentación
-- `INSTRUCCIONES_SIMPLES_GITHUB.txt` - Instrucciones ultra-simples
-- `RESUMEN_EJECUTIVO_GITHUB.md` - Resumen ejecutivo
-- `LISTO_PARA_GITHUB.md` - Resumen completo
-- `GITHUB_BACKUP_GUIDE.md` - Guía detallada
-- `GITHUB_CHECKLIST_RAPIDO.md` - Checklist rápido
-- `GITHUB_PREPARATION_SUMMARY.md` - Resumen técnico
-- `INDICE_ARCHIVOS_GITHUB.md` - Índice de archivos
-
----
-
-## 🎯 Elige tu Camino
-
-### 👶 Soy Principiante
-**Lee:** `AUTO_GITHUB_INSTRUCTIONS.txt`  
-**Usa:** `.uto_github_prep.ps1` (Windows) o `python auto_github_prep.py`
-
-### 🧑‍💻 Tengo Experiencia Media
-**Lee:** `RESUMEN_EJECUTIVO_GITHUB.md`  
-**Usa:** `python auto_github_prep.py`
-
-### 🤓 Soy Avanzado
-**Lee:** `GITHUB_PREPARATION_SUMMARY.md`  
-**Personaliza:** Revisa `.gitignore` manualmente
-
----
-
-## 🔐 Seguridad Garantizada
-
-### ❌ NO se Publicará
-- `.env` (API keys)
-- `sessions/` (datos personales)
-- `experience_memory/` (memoria)
-- `logs/` (registros)
-- `__pycache__/` (caché)
-- `backups/` (copias)
-- Y 50+ patrones más
-
-### ✅ SÍ se Publicará
-- Código fuente (`agent/`, `app/`)
-- Web (`static/`, `templates/`)
-- Tests (`tests/`)
-- Documentación importante
-- Configuración segura (`.env.example`)
-
----
-
-## 📋 Proceso de 3 Pasos
-
-### Opción A: Totalmente Automático (Recomendado)
+3. **Configurar variables de entorno:**
 ```bash
-# Ejecuta el script automático
-python auto_github_prep.py
-
-# O en Windows PowerShell
-.\auto_github_prep.ps1
-
-# El script hace TODO y te dice qué hacer después
+cp .env.example .env
+# Editar .env con tu configuración (API keys, modelo, etc.)
 ```
 
-### Opción B: Manual
-### Paso 1: Verificar
+4. **Ejecutar Kalin:**
 ```bash
-python verify_github_ready.py
+python main.py
 ```
 
-### Paso 2: Limpiar
-```bash
-python auto_prepare_github.py
+5. **Abrir navegador:**
+```
+http://127.0.0.1:5000
 ```
 
-### Paso 3: Subir
-```bash
-git add .
-git commit -m "Clean project structure - ready for GitHub"
-git push origin main
+## 📖 Uso Básico
+
+### Crear Código
 ```
+Usuario: "crea un cuadrado rojo en html"
+Kalin: [Genera código HTML]
+```
+
+### Modificar Código
+```
+Usuario: "agrega un círculo amarillo a la derecha"
+Kalin: [Aplica parche manteniendo código anterior]
+```
+
+### Deshacer Cambios
+- Menú **Herramientas** → **Deshacer último cambio** (Ctrl+Z)
+
+### Ver Historial
+- Menú **Ver** → **Visualizador de diffs**
+
+## 🏗️ Arquitectura
+
+```
+kalin/
+├── agent/                  # Núcleo del agente
+│   ├── core/              # Componentes principales
+│   │   ├── orchestration_layer.py  # Capa de orquestación
+│   │   ├── patch_manager.py        # Sistema de parches
+│   │   ├── memory_manager.py       # Gestión de memoria
+│   │   └── ...
+│   ├── llm/               # Clientes de LLM
+│   └── actions/           # Acciones del agente
+├── static/                # Frontend (JS, CSS)
+├── templates/             # Templates HTML
+├── tests/                 # Tests unitarios
+├── main.py               # Punto de entrada
+└── web.py                # Servidor Flask
+```
+
+## 🔌 Proveedores LLM Soportados
+
+- **Groq** (recomendado) - Llama 3.1, Mixtral
+- **Ollama** - Modelos locales (DeepSeek, CodeLlama)
+- **OpenAI** - GPT-3.5, GPT-4
+- **Anthropic** - Claude
+
+Configura el proveedor activo en `.env`:
+```env
+ACTIVE_PROVIDER=groq
+GROQ_API_KEY=your_api_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+```
+
+## 📊 Características Técnicas
+
+### Sistema de Parches
+- **Operaciones**: INSERT, DELETE, REPLACE, APPEND, PREPEND
+- **Ubicación inteligente**: Anchor text, regex patterns, line numbers
+- **Validación**: Regiones protegidas, detección de conflictos
+- **Snapshots**: Versionado automático antes de cada cambio
+
+### Optimización de Tokens
+- Generación incremental (solo fragmentos nuevos)
+- Contexto selectivo (solo archivos relevantes)
+- Prompts dinámicos adaptados a la intención
+- **Ahorro**: ~90% menos tokens vs regeneración completa
+
+### Trazabilidad Completa
+- Historial de todos los cambios
+- Metadata rica (timestamp, descripción, operación)
+- Reversión instantánea a cualquier punto
+- Auditoría completa del proyecto
+
+## 🧪 Testing
+
+Ejecutar tests:
+```bash
+pytest tests/ -v
+```
+
+Tests disponibles:
+- `test_general_workflow.py` - Flujo completo
+- `test_memoria_contextual.py` - Memoria conversacional
+- `test_flow_and_functionality.py` - Funcionalidades básicas
+
+## 🐳 Docker (Opcional)
+
+```bash
+docker-compose up -d
+```
+
+Acceder a `http://localhost:5000`
+
+## 📝 Archivos Importantes
+
+| Archivo | Descripción |
+|---------|-------------|
+| `main.py` | Punto de entrada principal |
+| `web.py` | Servidor Flask y endpoints API |
+| `requirements.txt` | Dependencias Python |
+| `.env.example` | Template de configuración |
+| `README_GITHUB.md` | Esta documentación |
+
+## 🤝 Contribuir
+
+1. Fork el repositorio
+2. Crea una rama feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+
+## 👤 Autor
+
+**Carlos BV**
+- GitHub: [@carlosbv99](https://github.com/carlosbv99)
+
+## 🙏 Agradecimientos
+
+- Groq por el acceso a modelos LLM de alta velocidad
+- Flask por el framework web
+- La comunidad open source
+
+## 📞 Soporte
+
+- **Issues**: [GitHub Issues](https://github.com/carlosbv99/kalin/issues)
+- **Email**: carlosbv99@example.com
 
 ---
 
-## 🔍 Verificación Rápida
-
-Antes de subir, confirma:
-```bash
-git status
-```
-
-✅ Deberías ver archivos de código  
-❌ NO deberías ver `.env`, `sessions/`, `logs/`
-
----
-
-## 🆘 ¿Problemas?
-
-### Archivo .env aparece en git
-```bash
-git rm --cached .env
-git commit -m "Remove .env"
-```
-
-### No estoy seguro si es seguro
-```bash
-python verify_github_ready.py
-```
-
-### Quiero ver qué se excluirá
-```bash
-git status --ignored
-```
-
----
-
-## 📚 Más Información
-
-| Para... | Lee esto |
-|---------|----------|
-| **Instrucciones scripts automáticos** | `AUTO_GITHUB_INSTRUCTIONS.txt` |
-| Instrucciones simples | `INSTRUCCIONES_SIMPLES_GITHUB.txt` |
-| Entender rápido | `RESUMEN_EJECUTIVO_GITHUB.md` |
-| Guía paso a paso | `GITHUB_BACKUP_GUIDE.md` |
-| Checklist final | `GITHUB_CHECKLIST_RAPIDO.md` |
-| Detalles técnicos | `GITHUB_PREPARATION_SUMMARY.md` |
-| Resumen completo | `LISTO_PARA_GITHUB.md` |
-| Navegar archivos | `INDICE_ARCHIVOS_GITHUB.md` |
-
----
-
-## ⚠️ Advertencias Importantes
-
-1. **NUNCA** subas el archivo `.env` con API keys reales
-2. **SIEMPRE** verifica con `git status` antes de commit
-3. **USA** variables de entorno para configuración sensible
-4. **MANTÉN** `.env.example` como plantilla segura
-
----
-
-## ✅ Checklist Final
-
-Antes de hacer push:
-
-- [ ] Ejecuté `verify_github_ready.py` sin errores
-- [ ] Revisé `git status` manualmente
-- [ ] Confirmé que `.env` NO está en la lista
-- [ ] Verifiqué que no hay API keys hardcodeadas
-- [ ] Los directorios de datos locales están excluidos
-
----
-
-## 🎉 ¡Listo!
-
-Tu proyecto Kalin v3.0 está completamente preparado para GitHub.
-
-**Seguridad:** 100% garantizada  
-**Documentación:** Completa  
-**Scripts:** Automatizados  
-**Confianza:** Total
-
-🚀 **¡Sube tu proyecto con confianza!**
-
----
-
-**Proyecto:** Kalin v3.0  
-**Preparado:** Mayo 2026  
-**Usuario:** carlosbv99  
-**Estado:** ✅ LISTO PARA GITHUB
+⭐ **Si este proyecto te fue útil, considera darle una estrella!**

@@ -4,7 +4,7 @@ Soporta: Llama 3, Mixtral, Gemma
 API gratuita disponible en: https://console.groq.com/keys
 """
 
-from .base_provider import BaseLLMProvider
+from .base_provider import BaseLLMProvider, LLMResponse
 import os
 
 
@@ -13,7 +13,8 @@ class GroqProvider(BaseLLMProvider):
     
     def __init__(self, config=None):
         super().__init__(config or {})
-        self.api_key = os.getenv('GROQ_API_KEY', '')
+        # Soporte para GROK_API_KEY (nombre en .env) y GROQ_API_KEY (estándar)
+        self.api_key = os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY', '')
         self.base_url = 'https://api.groq.com/openai/v1'
         
         # Modelos disponibles en Groq
@@ -52,10 +53,19 @@ class GroqProvider(BaseLLMProvider):
                 model=self.get_model_name(),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=int(max_tokens)
             )
             
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            
+            # Empaquetar la respuesta en un objeto LLMResponse
+            return LLMResponse(
+                text=content,
+                provider="groq",
+                model=self.get_model_name(),
+                tokens_used=len(content.split()),
+                cost=0.0
+            )
         
         except ImportError:
             raise Exception("Instala openai: pip install openai")

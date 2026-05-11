@@ -558,7 +558,8 @@ class UniversalRenderer {
             outputContent.textContent = output;
         }
         
-        this.outputPanel.style.display = 'block';
+        // MOSTRAR el panel automáticamente para Python y otros lenguajes
+        this.outputPanel.style.display = 'flex';
         
         console.log(`✅ ${language} output displayed`);
     }
@@ -568,27 +569,57 @@ class UniversalRenderer {
      */
     simulatePythonOutput(code) {
         let output = '🐍 Python Output Simulation\n';
-        output += '═'.repeat(40) + '\n\n';
+        output += '═'.repeat(50) + '\n\n';
         
         // Extraer print statements
         const printMatches = code.matchAll(/print\((.*?)\)/g);
         let hasOutput = false;
+        let outputs = [];
         
         for (const match of printMatches) {
             hasOutput = true;
             let content = match[1];
-            content = content.replace(/^["']|["']$/g, '');
-            content = content.replace(/^f["']|["']$/g, '');
-            output += content + '\n';
+            // Limpiar comillas y f-strings
+            content = content.replace(/^f?["']|["']$/g, '');
+            // Manejar concatenación básica
+            content = content.replace(/\s*\+\s*/g, ' ');
+            outputs.push(content);
         }
         
-        if (!hasOutput) {
-            output += '(No hay output para mostrar)\n';
-            output += '\n💡 Tip: Agrega print() para ver output';
+        if (hasOutput) {
+            output += outputs.join('\n');
+        } else {
+            output += '(No hay print() statements detectados)\n';
+            
+            // Detectar qué hace el código
+            if (code.includes('def ')) {
+                const functions = code.match(/def\s+(\w+)\s*\(/g);
+                if (functions) {
+                    output += '\n📋 Funciones definidas:\n';
+                    functions.forEach(f => {
+                        const funcName = f.match(/def\s+(\w+)/)[1];
+                        output += `  - ${funcName}()\n`;
+                    });
+                }
+            }
+            
+            if (code.includes('class ')) {
+                const classes = code.match(/class\s+(\w+)/g);
+                if (classes) {
+                    output += '\n📦 Clases definidas:\n';
+                    classes.forEach(c => {
+                        const className = c.match(/class\s+(\w+)/)[1];
+                        output += `  - ${className}\n`;
+                    });
+                }
+            }
+            
+            output += '\n💡 Tip: Agrega print() para ver output en consola';
         }
         
-        output += '\n' + '═'.repeat(40);
-        output += '\n⚠️ Esta es una simulación. Para ejecutar código Python real,\nusa el backend con Python instalado.';
+        output += '\n' + '═'.repeat(50);
+        output += '\n⚠️ Esta es una simulación estática del código.';
+        output += '\n💡 Para ejecutar Python real, usa el terminal o un IDE.';
         
         return output;
     }

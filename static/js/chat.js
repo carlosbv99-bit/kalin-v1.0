@@ -93,13 +93,24 @@ class ChatManager {
      */
     async callBackend(message) {
         const apiUrl = window.AppConfig?.API.SEND_MESSAGE || '/send';
+        
+        // Obtener código actual del editor si existe
+        let currentCode = '';
+        if (window.CodeEditorManager && window.CodeEditorManager.codeEditor) {
+            currentCode = window.CodeEditorManager.codeEditor.value;
+        }
 
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ 
+                message,
+                context: {
+                    current_code: currentCode
+                }
+            })
         });
 
         if (!response.ok) {
@@ -123,42 +134,31 @@ class ChatManager {
             return;
         }
 
-        // Agregar mensaje del asistente
-        this.addMessage(responseText, 'assistant');
-
-        // Si hay código, mostrarlo en el panel principal y renderizar
-        if (response.code || this.containsCode(responseText)) {
+        // Verificar si hay código en la respuesta
+        const hasCode = response.code || this.containsCode(responseText);
+        
+        if (hasCode) {
             const code = response.code || this.extractCode(responseText);
             if (code) {
+                // Enviar código directamente al panel de código (sin mostrarlo en el chat)
                 this.displayCodeInMainArea(code);
                 
-                // Intentar renderizar con UniversalRenderer
-                if (window.UniversalRenderer) {
-                    setTimeout(() => {
-                        window.UniversalRenderer.render(code);
-                    }, 300);
-                }
-            }
-        }
-
-        // Si es HTML y preview está activo, renderizar (fallback)
-        if (window.PreviewManager) {
-            const code = response.code || this.extractCode(responseText);
-            console.log('🔍 Checking for HTML code to render:', {
-                hasCodeField: !!response.code,
-                extractedCode: !!code,
-                isHTML: code ? window.PreviewManager.isHTMLCode(code) : false,
-                previewEnabled: window.PreviewManager.enabled
-            });
-            
-            if (code && window.PreviewManager.isHTMLCode(code)) {
-                console.log('✅ Rendering HTML in preview');
+                // Mensaje de confirmación breve en el chat
+                const lang = this.detectLanguage(code);
+                this.addMessage(`✅ Código ${lang.toUpperCase()} generado y actualizado en el editor.`, 'assistant');
+                
+                // Renderizar automáticamente
                 setTimeout(() => {
-                    window.PreviewManager.render(code);
-                }, window.AppConfig?.RENDERING.PREVIEW_RENDER_DELAY || 500);
-            } else {
-                console.log('⚠️ Not rendering - conditions not met');
+                    if (window.UniversalRenderer) {
+                        window.UniversalRenderer.render(code);
+                    } else if (window.PreviewManager && window.PreviewManager.isHTMLCode(code)) {
+                        window.PreviewManager.render(code);
+                    }
+                }, 300);
             }
+        } else {
+            // Si no hay código, mostrar el texto completo en el chat
+            this.addMessage(responseText, 'assistant');
         }
     }
 
@@ -249,7 +249,10 @@ class ChatManager {
                text.includes('class ') ||
                text.includes('def ') ||
                text.includes('<html') ||
-               text.includes('import ');
+               text.includes('<!DOCTYPE') ||
+               text.includes('import ') ||
+               // Detectar fragmentos HTML simples
+               (text.includes('<') && text.includes('>') && /<(div|span|p|button|input|form|table|h[1-6]|ul|ol|li|a|img|video|audio|canvas|svg)/i.test(text));
     }
 
     /**
@@ -269,9 +272,59 @@ class ChatManager {
             return match[1].trim();
         }
         
-        // Si no hay bloques de código markdown, buscar patrones de código
-        // Esto es un fallback para código sin formato markdown
+        // Si no hay bloques de código markdown, buscar fragmentos HTML simples
+        // Detectar si el texto es principalmente un elemento HTML
+        const htmlFragmentRegex = /<(div|span|p|button|input|form|table|h[1-6]|ul|ol|li|a|img|video|audio|canvas|svg)[^>]*>[\s\S]*?<\/\1>/i;
+        const htmlMatch = text.match(htmlFragmentRegex);
+        
+        if (htmlMatch) {
+            return htmlMatch[0].trim();
+        }
+        
+        // Si no hay patrones específicos, retornar null
         return null;
+    }
+
+    /**
+     * Detectar lenguaje del código
+     * @param {string} code - Código a analizar
+     * @returns {string} - Lenguaje detectado
+     */
+    detectLanguage(code) {
+        if (!code) return 'text';
+        const c = code.trim();
+        
+        // HTML (incluir etiquetas sueltas y SVG)
+        if (c.startsWith('<!DOCTYPE') || 
+            c.includes('<html') || 
+            c.includes('<div') || 
+            c.includes('<span') ||
+            c.includes('<circle') ||
+            c.includes('<svg') ||
+            c.includes('<body') ||
+            c.includes('<head')) {
+            return 'html';
+        }
+        
+        // Python
+        if (c.includes('def ') || c.includes('import ') || c.includes('print(')) return 'python';
+        
+        // C / C++
+        if (c.includes('#include')) {
+            if (c.includes('<iostream>') || c.includes('std::') || c.includes('cout')) return 'cpp';
+            return 'c';
+        }
+        
+        // Java
+        if (c.includes('public class') || c.includes('System.out.println')) return 'java';
+        
+        // JavaScript
+        if (c.includes('function') || c.includes('const ') || c.includes('console.log')) return 'javascript';
+        
+        // CSS
+        if (c.includes('{') && c.includes(':') && c.includes(';') && !c.includes('int ') && !c.includes('void')) return 'css';
+        
+        return 'text';
     }
 
     /**

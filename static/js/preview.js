@@ -5,7 +5,7 @@
 
 class PreviewManager {
     constructor() {
-        this.enabled = window.AppConfig?.UI.DEFAULT_PREVIEW_ENABLED || false;
+        this.enabled = true; // Activado por defecto
         this.previewFrame = null;
         this.placeholder = null;
         this.toggleButton = null;

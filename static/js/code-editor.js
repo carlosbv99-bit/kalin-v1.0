@@ -989,10 +989,10 @@ class CodeEditorManager {
      * Mostrar panel de output
      */
     showOutput() {
+        // NO mostrar automáticamente - solo actualizar contenido
+        // El usuario debe activar el terminal manualmente desde el menú Ver
         const outputPanel = document.getElementById('webcontainer-output');
-        if (outputPanel) {
-            outputPanel.style.display = 'block';
-        }
+        // Comentado: outputPanel.style.display = 'block';
     }
 
     /**

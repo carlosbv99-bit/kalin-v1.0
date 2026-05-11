@@ -994,17 +994,16 @@
 
       .dropdown-submenu {
         display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
+        position: fixed;
         background: white;
         border: 1px solid #e5e5e5;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
+        z-index: 10000;
         min-width: 320px;
-        margin-top: 4px;
         padding: 6px 0;
+        max-height: 70vh;
+        overflow-y: auto;
       }
 
       .dropdown-submenu.show {
@@ -1337,6 +1336,17 @@
         color: #4da6ff;
       }
 
+      /* Panel de Terminal */
+      body.dark-mode #terminal-panel {
+        background: #1e1e1e;
+        border-top-color: #007acc;
+      }
+
+      body.dark-mode #terminal-output {
+        background: #1e1e1e;
+        color: #d4d4d4;
+      }
+
       /* Botón de modo oscuro */
       body.dark-mode #dark-mode-toggle {
         background: #3c3c3c;
@@ -1476,6 +1486,42 @@
 
       body.dark-mode .sidebar-section div[style*="padding: 12px"][style*="background: #f8f9fa"] span[style*="color: #666"] {
         color: #aaa !important;
+      }
+
+      body.dark-mode #api-key-input {
+        background: #3c3c3c !important;
+        border-color: #3e3e3e !important;
+        color: #d4d4d4 !important;
+      }
+
+      body.dark-mode #api-key-input::placeholder {
+        color: #858585 !important;
+      }
+
+      body.dark-mode #api-key-modal-message {
+        color: #aaa !important;
+      }
+
+      /* Dialogs nativos (alert, prompt, confirm) - Modo Oscuro */
+      /* Nota: Los dialogs nativos del navegador no se pueden estilizar completamente con CSS
+         pero podemos usar un overlay oscuro para mejorar la experiencia */
+      body.dark-mode::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 999999;
+      }
+
+      /* Cuando hay un dialog activo, mostrar overlay */
+      body.dialog-active.dark-mode::before {
+        opacity: 1;
       }
 
       /* Botón azul de instalación rápida */
@@ -1806,11 +1852,6 @@
           <span>Descargar Modelos IA</span>
         </button>
         
-        <button class="sidebar-btn" onclick="selectActiveModel()">
-          <span class="sidebar-btn-icon">🤖</span>
-          <span>Seleccionar Modelo Activo</span>
-        </button>
-        
         <div class="sidebar-info">
           Automatiza la configuración completa: entorno virtual, packages y modelos Ollama.
         </div>
@@ -1865,16 +1906,49 @@
       </div>
     </div>
 
+    <!-- Modal para ingresar API Key -->
+    <div class="modal-overlay" id="api-key-modal" style="display: none;">
+      <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+          <span class="modal-title" id="api-key-modal-title">🔑 Ingresar API Key</span>
+          <button class="modal-close" onclick="closeApiKeyModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <p id="api-key-modal-message" style="margin-bottom: 16px; color: #666;"></p>
+          <input type="password" id="api-key-input" placeholder="Ingresa tu API Key aquí..." 
+                 style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: monospace; box-sizing: border-box;">
+          <p style="margin-top: 12px; font-size: 12px; color: #999;">
+            💡 Tu API Key se guardará de forma segura en el almacenamiento local del navegador.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn" onclick="closeApiKeyModal()">Cancelar</button>
+          <button class="modal-btn modal-btn-primary" id="api-key-submit-btn" onclick="submitApiKey()">Guardar y Activar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="header">
       <span style="font-weight: 600; margin-left: 52px;">Kalin v1.0</span>
-      <span id="active-model-indicator" style="margin-left: 16px; padding: 4px 12px; background: #f0f7ff; border: 1px solid #0066ff; border-radius: 12px; font-size: 13px; color: #0066ff; font-weight: 500;">
-        🤖 Cargando modelo...
-      </span>
+      
+      <!-- Botón desplegable de modelo activo -->
+      <div style="position: relative; margin-left: 16px;" onmouseenter="showModelSelectorMenu(event)" onmouseleave="hideModelSelectorMenu(event)">
+        <span id="active-model-indicator" style="padding: 4px 12px; background: #f0f7ff; border: 1px solid #0066ff; border-radius: 12px; font-size: 13px; color: #0066ff; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+          🤖 Cargando modelo... <span style="font-size: 10px;">▼</span>
+        </span>
+        
+        <!-- Submenú de selección de modelo -->
+        <div class="dropdown-submenu" id="submenu-model-selector" style="display: none; min-width: 280px; max-height: 70vh; overflow-y: auto;" onclick="event.stopPropagation()">
+          <div style="padding: 12px; text-align: center; color: #666;">
+            Cargando modelos...
+          </div>
+        </div>
+      </div>
       
       <!-- Barra de menús desplegables -->
       <div style="margin-left: 24px; display: flex; gap: 4px; align-items: center;">
         <!-- Menú Archivo -->
-        <div class="menu-bar-item" style="position: relative;">
+        <div class="menu-bar-item" style="position: relative;" onmouseenter="showFileMenu()" onmouseleave="hideFileMenu()">
           <button class="menu-bar-btn" data-menu="file">Archivo</button>
           <div class="dropdown-submenu" id="menu-file">
             <!-- Sección Crear -->
@@ -1883,7 +1957,7 @@
               <span>📁 Nuevo Proyecto...</span>
               <span style="margin-left: auto;">▶</span>
               <!-- Submenú de plantillas -->
-              <div class="dropdown-submenu" id="submenu-create-project" style="display: none; position: absolute; left: 100%; top: 0; min-width: 280px;" onclick="event.stopPropagation()">
+              <div class="dropdown-submenu" id="submenu-create-project" style="display: none; min-width: 280px;" onclick="event.stopPropagation()">
                 <div class="dropdown-section-title">Lenguajes Populares</div>
                 <div class="dropdown-item" onclick="createProject('python')">
                   <span>🐍 Python</span>
@@ -2002,124 +2076,175 @@
               <span>Cortar</span>
               <span class="shortcut">Ctrl+X</span>
             </div>
+            
+            <div class="dropdown-divider"></div>
+            
+            <!-- Menú Preferencias con submenú desplegable -->
+            <div class="dropdown-item" style="position: relative;" onmouseenter="showPreferencesSubmenu(event)" onmouseleave="hidePreferencesSubmenu(event)">
+              <span>⚙️ Preferencias</span>
+              <span style="margin-left: auto;">▶</span>
+              <div class="dropdown-submenu" id="submenu-preferences" style="display: none; min-width: 320px;" onclick="event.stopPropagation()">
+                <div class="dropdown-section-title">Instalación</div>
+                <div class="dropdown-item" onclick="quickInstall()">
+                  <span>🚀 Instalar Kalin (Automático)</span>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">Dependencias</div>
+                <div class="dropdown-item" onclick="checkDependencies()">
+                  <span>🔍 Verificar dependencias</span>
+                </div>
+                <div class="dropdown-item" onclick="checkPendingDependencies()">
+                  <span>📦 Instalar dependencias pendientes</span>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">Modelos IA</div>
+                <div class="dropdown-item" style="position: relative;" onmouseenter="showDownloadModelsSubmenu(event)" onmouseleave="hideDownloadModelsSubmenu(event)">
+                  <span>📥 Descargar modelos IA</span>
+                  <span style="margin-left: auto;">▶</span>
+                  <div class="dropdown-submenu" id="submenu-download-models" style="display: none; min-width: 280px; max-height: 70vh; overflow-y: auto;" onclick="event.stopPropagation()">
+                    <div class="dropdown-section-title">Modelos Locales (Ollama)</div>
+                    <div class="dropdown-item" onclick="downloadLocalModel('llama3.2')">
+                      <span>🦙 Llama 3.2 (3B)</span>
+                    </div>
+                    <div class="dropdown-item" onclick="downloadLocalModel('llama3.1')">
+                      <span>🦙 Llama 3.1 (8B)</span>
+                    </div>
+                    <div class="dropdown-item" onclick="downloadLocalModel('mistral')">
+                      <span>💨 Mistral (7B)</span>
+                    </div>
+                    <div class="dropdown-item" onclick="downloadLocalModel('qwen2.5')">
+                      <span>🔵 Qwen 2.5 (7B)</span>
+                    </div>
+                    
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-section-title">Modelos en la Nube</div>
+                    <div class="dropdown-item" style="position: relative;" onmouseenter="showCloudProviderSubmenu(event, 'openai')" onmouseleave="hideCloudProviderSubmenu(event)">
+                      <span>🔵 OpenAI</span>
+                      <span style="margin-left: auto;">▶</span>
+                      <div class="dropdown-submenu" id="submenu-download-openai-models" style="display: none; min-width: 250px;" onclick="event.stopPropagation()" onmouseenter="keepCloudProviderSubmenuOpen('download-openai')" onmouseleave="hideCloudProviderSubmenu(event)">
+                        <div class="dropdown-item" onclick="activateCloudModel('openai', 'gpt-4')">
+                          <span>GPT-4</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('openai', 'gpt-3.5-turbo')">
+                          <span>GPT-3.5 Turbo</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('openai', 'gpt-4-turbo')">
+                          <span>GPT-4 Turbo</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="dropdown-item" style="position: relative;" onmouseenter="showCloudProviderSubmenu(event, 'anthropic')" onmouseleave="hideCloudProviderSubmenu(event)">
+                      <span>🟣 Anthropic</span>
+                      <span style="margin-left: auto;">▶</span>
+                      <div class="dropdown-submenu" id="submenu-download-anthropic-models" style="display: none; min-width: 250px;" onclick="event.stopPropagation()" onmouseenter="keepCloudProviderSubmenuOpen('download-anthropic')" onmouseleave="hideCloudProviderSubmenu(event)">
+                        <div class="dropdown-item" onclick="activateCloudModel('anthropic', 'claude-3-opus-20240229')">
+                          <span>Claude 3 Opus</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('anthropic', 'claude-3-sonnet-20240229')">
+                          <span>Claude 3 Sonnet</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('anthropic', 'claude-3-haiku-20240307')">
+                          <span>Claude 3 Haiku</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="dropdown-item" style="position: relative;" onmouseenter="showCloudProviderSubmenu(event, 'groq')" onmouseleave="hideCloudProviderSubmenu(event)">
+                      <span>⚡ Groq</span>
+                      <span style="margin-left: auto;">▶</span>
+                      <div class="dropdown-submenu" id="submenu-download-groq-models" style="display: none; min-width: 250px;" onclick="event.stopPropagation()" onmouseenter="keepCloudProviderSubmenuOpen('download-groq')" onmouseleave="hideCloudProviderSubmenu(event)">
+                        <div class="dropdown-item" onclick="activateCloudModel('groq', 'llama-3.1-70b-versatile')">
+                          <span>Llama 3.1 70B</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('groq', 'llama-3.1-8b-instant')">
+                          <span>Llama 3.1 8B</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('groq', 'mixtral-8x7b-32768')">
+                          <span>Mixtral 8x7B</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="dropdown-item" style="position: relative;" onmouseenter="showCloudProviderSubmenu(event, 'gemini')" onmouseleave="hideCloudProviderSubmenu(event)">
+                      <span>🌟 Google Gemini</span>
+                      <span style="margin-left: auto;">▶</span>
+                      <div class="dropdown-submenu" id="submenu-download-gemini-models" style="display: none; min-width: 250px;" onclick="event.stopPropagation()" onmouseenter="keepCloudProviderSubmenuOpen('download-gemini')" onmouseleave="hideCloudProviderSubmenu(event)">
+                        <div class="dropdown-item" onclick="activateCloudModel('gemini', 'gemini-pro')">
+                          <span>Gemini Pro</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('gemini', 'gemini-1.5-pro')">
+                          <span>Gemini 1.5 Pro</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('gemini', 'gemini-1.5-flash')">
+                          <span>Gemini 1.5 Flash</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="dropdown-item" style="position: relative;" onmouseenter="showCloudProviderSubmenu(event, 'mistral')" onmouseleave="hideCloudProviderSubmenu(event)">
+                      <span>🎯 Mistral AI</span>
+                      <span style="margin-left: auto;">▶</span>
+                      <div class="dropdown-submenu" id="submenu-download-mistral-models" style="display: none; min-width: 250px;" onclick="event.stopPropagation()" onmouseenter="keepCloudProviderSubmenuOpen('download-mistral')" onmouseleave="hideCloudProviderSubmenu(event)">
+                        <div class="dropdown-item" onclick="activateCloudModel('mistral', 'mistral-large-latest')">
+                          <span>Mistral Large</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('mistral', 'mistral-medium-latest')">
+                          <span>Mistral Medium</span>
+                        </div>
+                        <div class="dropdown-item" onclick="activateCloudModel('mistral', 'mistral-small-latest')">
+                          <span>Mistral Small</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">Memoria</div>
+                <div class="dropdown-item" onclick="importExperience()">
+                  <span>📥 Importar Experiencia</span>
+                </div>
+                <div class="dropdown-item" onclick="exportExperience()">
+                  <span>📦 Exportar Experiencia</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Menú Ver -->
+        <div class="menu-bar-item" style="position: relative;" onmouseenter="showViewMenu()" onmouseleave="hideViewMenu()">
+          <button class="menu-bar-btn" data-menu="view">Ver</button>
+          <div class="dropdown-submenu" id="menu-view">
+            <div class="dropdown-item" onclick="toggleTerminal()">
+              <span>💻 Terminal</span>
+              <span class="shortcut">Ctrl+`</span>
+            </div>
+            <div class="dropdown-item" onclick="showDiffViewer()">
+              <span>🔍 Visualizador de diffs</span>
+              <span class="shortcut"></span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Menú Herramientas -->
+        <div class="menu-bar-item" style="position: relative;" onmouseenter="showToolsMenu()" onmouseleave="hideToolsMenu()">
+          <button class="menu-bar-btn" data-menu="tools">Herramientas</button>
+          <div class="dropdown-submenu" id="menu-tools">
+            <div class="dropdown-item" onclick="undoLastChange()">
+              <span>↩️ Deshacer último cambio</span>
+              <span class="shortcut">Ctrl+Z</span>
+            </div>
           </div>
         </div>
         
         <!-- Futuros menús se agregarán aquí -->
       </div>
       
-      <!-- Menú desplegable en la parte superior derecha -->
+      <!-- Botón de Modo Oscuro -->
       <div style="margin-left: auto; position: relative; display: flex; gap: 8px; align-items: center;">
-        <!-- Botón de Modo Oscuro -->
         <button id="dark-mode-toggle" onclick="toggleDarkMode()" style="background: none; border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 18px; display: flex; align-items: center; gap: 6px;" title="Cambiar modo oscuro/claro">
           🌙
         </button>
-        
-        <!-- Botón de Configuración -->
-        <button id="dropdown-menu-btn" style="background: none; border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 18px; display: flex; align-items: center; gap: 6px;">
-          ⚙️
-        </button>
-        
-        <div id="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e5e5e5; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 280px; max-height: 70vh; overflow-y: auto; margin-top: 8px;">
-          <div style="padding: 16px; border-bottom: 1px solid #e5e5e5;">
-            <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">🧠 Memoria de Kalin</div>
-          </div>
-          
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Experiencias</div>
-            <button class="sidebar-btn" onclick="exportExperience()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>📦</span>
-              <span>Exportar Experiencia</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Guarda tu experiencia acumulada en un archivo JSON para compartirla con otros usuarios.
-            </div>
-          </div>
-          
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Importar</div>
-            <button class="sidebar-btn" onclick="importExperience()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>📥</span>
-              <span>Importar Experiencia</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Carga experiencias de otros usuarios para que Kalin aprenda más rápido.
-            </div>
-          </div>
-          
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Instalación Rápida</div>
-            <button class="sidebar-btn" onclick="quickInstall()" style="width: 100%; padding: 8px 12px; border: 1px solid #0066ff; border-radius: 6px; background: #0066ff; color: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
-              <span>🚀</span>
-              <span>Instalar Kalin (Automático)</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Ejecuta todos los pasos de instalación automáticamente en el orden correcto.
-            </div>
-          </div>
-          
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Gestión de Dependencias Python</div>
-            <div style="padding: 8px; background: #f8f9fa; border-radius: 6px; margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">
-                <input type="checkbox" id="auto-deps-toggle-dropdown" onchange="toggleAutoDependencies()" style="width: 16px; height: 16px; cursor: pointer;">
-                <span>Activar detección automática</span>
-              </label>
-              <div style="margin-top: 6px; font-size: 11px; color: #666; line-height: 1.4;">
-                Cuando está activado, Kalin detectará automáticamente las dependencias necesarias después de generar código Python y te ofrecerá instalarlas.
-              </div>
-            </div>
-            <button class="sidebar-btn" onclick="checkPendingDependencies()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>🔍</span>
-              <span>Verificar dependencias pendientes</span>
-            </button>
-            <button class="sidebar-btn" onclick="installPendingDependencies()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>⚙️</span>
-              <span>Instalar dependencias pendientes</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Controla cómo Kalin gestiona las bibliotecas externas de Python (numpy, matplotlib, etc.)
-            </div>
-          </div>
-          
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Instalación Manual</div>
-            <button class="sidebar-btn" onclick="checkDependencies()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>🔍</span>
-              <span>Verificar Dependencias</span>
-            </button>
-            <button class="sidebar-btn" onclick="createVenv()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>📦</span>
-              <span>Crear Entorno Virtual</span>
-            </button>
-            <button class="sidebar-btn" onclick="installDependencies()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>⚙️</span>
-              <span>Instalar Dependencias</span>
-            </button>
-            <button class="sidebar-btn" onclick="downloadModels()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>📥</span>
-              <span>Descargar Modelos IA</span>
-            </button>
-            <button class="sidebar-btn" onclick="selectActiveModel()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>🤖</span>
-              <span>Seleccionar Modelo Activo</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Automatiza la configuración completa: entorno virtual, packages y modelos Ollama.
-            </div>
-          </div>
-          
-          <div style="padding: 12px 16px;">
-            <div style="font-size: 12px; text-transform: uppercase; color: #6e6e80; margin-bottom: 8px; font-weight: 600;">Herramientas Avanzadas</div>
-            <button class="sidebar-btn" onclick="viewEnvFile()" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <span>📄</span>
-              <span>Ver/Editar Archivo .env</span>
-            </button>
-            <div style="font-size: 12px; color: #666; line-height: 1.4;">
-              Visualiza y edita manualmente la configuración de Kalin. Solo para usuarios avanzados.
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -2164,11 +2289,24 @@
                 </div>
               </div>
               
+              <!-- Panel de Terminal (dentro del área de código) -->
+              <div id="terminal-panel" style="display: none; min-height: 200px; max-height: 300px; background: #1e1e1e; border-top: 2px solid #007acc; flex-direction: column; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #2d2d2d; border-bottom: 1px solid #3e3e3e;">
+                  <span style="color: #cccccc; font-size: 13px; font-weight: 600;">💻 Terminal</span>
+                  <button onclick="toggleTerminal()" style="background: none; border: none; color: #cccccc; cursor: pointer; font-size: 18px; padding: 0 4px;">×</button>
+                </div>
+                <div id="terminal-output" style="flex: 1; overflow-y: auto; padding: 12px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; color: #d4d4d4; white-space: pre-wrap; word-wrap: break-word;"></div>
+                <div style="display: flex; align-items: center; padding: 8px 12px; background: #252526; border-top: 1px solid #3e3e3e;">
+                  <span style="color: #4ec9b0; margin-right: 8px;">$</span>
+                  <input type="text" id="terminal-input" placeholder="Escribe un comando..." style="flex: 1; background: transparent; border: none; outline: none; color: #d4d4d4; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px;" onkeypress="handleTerminalKeyPress(event)">
+                </div>
+              </div>
+              
               <!-- Panel de output para WebContainer -->
               <div id="webcontainer-output" style="display: none; height: 200px; background: #1e1e1e; color: #d4d4d4; border-top: 2px solid #007acc; padding: 12px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; overflow-y: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;">
                   <span style="font-weight: 600; color: #007acc;">🖥️ Terminal Output</span>
-                  <button id="close-output-btn" style="background: none; border: none; color: #fff; cursor: pointer; font-size: 16px;">×</button>
+                  <button onclick="toggleTerminal()" style="background: none; border: none; color: #fff; cursor: pointer; font-size: 16px;">×</button>
                 </div>
                 <pre id="output-content" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
               </div>
@@ -2235,7 +2373,6 @@
         // Verificar que las funciones críticas estén registradas
         (function() {
             const criticalFunctions = [
-                'selectActiveModel',
                 'downloadModels',
                 'installDependencies',
                 'createVenv',
@@ -2277,6 +2414,7 @@
     
     <!-- 7. Editor de Código (nuevo) -->
     <script src="/static/js/code-editor.js"></script>
+    <script src="/static/js/menu-functions.js"></script>
     
     <!-- 7.5. WebContainers (para ejecución de código en el navegador) -->
     <script src="https://cdn.jsdelivr.net/npm/@webcontainer/api@1.3.0-internal.4/dist/webcontainer.js"></script>

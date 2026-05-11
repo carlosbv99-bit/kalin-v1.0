@@ -12,6 +12,7 @@ from agent.llm.providers.base_provider import LLMResponse
 from agent.llm.providers.ollama_provider import OllamaProvider
 from agent.llm.providers.openai_provider import OpenAIProvider
 from agent.llm.providers.anthropic_provider import AnthropicProvider
+from agent.llm.providers.groq_provider import GroqProvider
 
 DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
 
@@ -20,14 +21,25 @@ DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
 # =========================
 
 SYSTEM_CODE = """
-Eres un generador de código profesional.
+Genera SOLO código. Sin texto extra. Sin markdown.
+"""
 
-REGLAS:
-- SOLO código
-- NO markdown
-- NO explicaciones
-- NO texto fuera del código
-- NO uses ```
+SYSTEM_CODE_DETAILED = """
+ERES UN MOTOR DE GENERACIÓN DE CÓDIGO UNIVERSAL.
+
+INSTRUCCIÓN MAESTRA:
+- Analiza el lenguaje solicitado por el usuario (C, C++, Java, Python, HTML, JS, etc.).
+- Genera ÚNICAMENTE el código fuente correspondiente a ese lenguaje.
+- Si el usuario pide C o C++, NO uses Python ni librerías de alto nivel. Usa sintaxis nativa.
+- NO incluyas NUNCA texto conversacional, saludos, explicaciones o markdown (```).
+- El output debe ser 100% código ejecutable o estructural válido.
+- Si el usuario pide algo visual en un lenguaje de consola (como C), usa la librería estándar o gráficos básicos si es posible.
+- Si el usuario pide una modificación, genera el CÓDIGO COMPLETO actualizado, no solo el fragmento.
+
+PROHIBIDO:
+- Usar marcadores como [INICIO DEL CÓDIGO] o [FIN DEL CÓDIGO].
+- Decir "Aquí tienes el código..."
+- Decir "Espero que te sirva..."
 """
 
 SYSTEM_CHAT = """
@@ -120,6 +132,7 @@ class LLMProviderManager:
             ProviderType.OLLAMA: OllamaProvider,
             ProviderType.OPENAI: OpenAIProvider,
             ProviderType.ANTHROPIC: AnthropicProvider,
+            ProviderType.GROQ: GroqProvider,
         }
 
         for provider_type, ProviderClass in provider_classes.items():
@@ -161,7 +174,9 @@ class LLMProviderManager:
         # SELECCIÓN DE MODO
         # =========================
 
-        is_code_task = use_case not in ["chat", "help", "greeting"]
+        # Usar SYSTEM_CODE para TODO excepto saludos muy breves
+        is_greeting = use_case in ["greeting"] and len(prompt) < 50
+        is_code_task = not is_greeting
 
         system_prompt = SYSTEM_CODE if is_code_task else SYSTEM_CHAT
 
@@ -185,15 +200,9 @@ class LLMProviderManager:
 
                 print(f"🤖 {provider_type.value} intento {attempt+1}")
 
-                # LOG DEL PROMPT REAL QUE VA AL MODELO
-                print("\n=== PROMPT START ===")
-                print(full_prompt)
-                print("=== PROMPT END ===")
-                print(f"Longitud: {len(full_prompt)} chars | Tokens estimados: ~{len(full_prompt)//4}")
-                print("="*80 + "\n")
-
                 try:
-                    response = provider.generate(full_prompt, max_tokens, temperature)
+                    # Corregimos el orden de los argumentos según la firma del proveedor
+                    response = provider.generate(full_prompt, temperature, max_tokens)
 
                     if not response or not response.text:
                         continue
@@ -202,15 +211,6 @@ class LLMProviderManager:
 
                     # LIMPIAR markdown ANTES de validar
                     cleaned = clean_llm_output(raw)
-
-                    # LOG DE LA RESPUESTA RAW DEL MODELO
-                    print("\n=== RAW MODEL RESPONSE START ===")
-                    print(f"Longitud: {len(raw)} chars")
-                    print(raw[:1000])
-                    if len(raw) > 1000:
-                        print(f"... ({len(raw) - 1000} chars más)")
-                    print("=== RAW MODEL RESPONSE END ===")
-                    print("="*80 + "\n")
 
                     # =========================
                     # VALIDACIÓN SOLO PARA CÓDIGO

@@ -215,51 +215,86 @@ function importExperience() {
 /**
  * Verificar dependencias - COMENTADO (ahora definido en ui-manager.js)
  */
-/*
 async function checkDependencies() {
     console.log('🔍 checkDependencies llamado');
     
-    if (window.UIManager) {
-        window.UIManager.checkDependencies();
-    } else {
-        console.warn('⚠️ UIManager no disponible, usando fallback');
-        try {
-            const response = await fetch('/system/check-dependencies');
-            const data = await response.json();
+    try {
+        const response = await fetch('/system/check-dependencies');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            let message = '📊 **Reporte de Dependencias**\n\n';
             
-            if (data.status === 'success') {
-                let message = '📊 **Reporte de Dependencias**\n\n';
-                
-                if (data.missing && data.missing.length > 0) {
-                    message += '❌ **Faltantes:**\n';
-                    data.missing.forEach(dep => {
-                        message += `• ${dep}\n`;
-                    });
-                    message += '\n';
-                }
-                
-                if (data.installed && data.installed.length > 0) {
-                    message += '✅ **Instaladas:**\n';
-                    data.installed.forEach(dep => {
-                        message += `• ${dep}\n`;
-                    });
-                    message += '\n';
-                }
-                
-                if (data.missing && data.missing.length > 0) {
-                    message += '💡 Ejecuta "Instalar Dependencias" desde el menú para instalar las faltantes.';
-                } else {
-                    message += '✨ ¡Todas las dependencias están instaladas!';
-                }
-
-                alert(message);
+            // Estado de Python
+            if (data.results.python) {
+                message += `✅ Python: ${data.results.python_version || 'Instalado'}\n`;
+            } else {
+                message += '❌ Python: No encontrado\n';
             }
-        } catch (error) {
-            console.error('Error verificando dependencias:', error);
+            
+            // Estado de pip
+            if (data.results.pip) {
+                message += '✅ pip: Instalado\n';
+            } else {
+                message += '❌ pip: No encontrado\n';
+            }
+            
+            // Estado de Flask
+            if (data.results.flask) {
+                message += `✅ Flask: ${data.results.flask_version || 'Instalado'}\n`;
+            } else {
+                message += '❌ Flask: No instalado\n';
+            }
+            
+            // Estado de Ollama
+            if (data.results.ollama) {
+                message += '✅ Ollama: Instalado y corriendo\n';
+                if (data.results.models && data.results.models.length > 0) {
+                    message += `   Modelos instalados: ${data.results.models.join(', ')}\n`;
+                } else {
+                    message += '   ⚠️ No hay modelos instalados\n';
+                }
+            } else {
+                message += '❌ Ollama: No instalado o no está corriendo\n';
+                message += '   Descarga desde: https://ollama.ai\n';
+                message += '   Inicia con: ollama serve\n';
+            }
+            
+            message += '\n';
+            
+            // Paquetes Python
+            const installedPackages = data.results.packages.filter(p => p.installed);
+            const missingPackages = data.results.packages.filter(p => !p.installed);
+            
+            if (installedPackages.length > 0) {
+                message += '✅ **Paquetes instalados:**\n';
+                installedPackages.forEach(pkg => {
+                    message += `• ${pkg.name}\n`;
+                });
+                message += '\n';
+            }
+            
+            if (missingPackages.length > 0) {
+                message += '❌ **Paquetes faltantes:**\n';
+                missingPackages.forEach(pkg => {
+                    message += `• ${pkg.name}\n`;
+                });
+                message += '\n';
+            }
+            
+            if (missingPackages.length > 0) {
+                message += '💡 Ejecuta "Instalar Dependencias" desde el menú para instalar los paquetes faltantes.';
+            } else {
+                message += '✨ ¡Todas las dependencias están instaladas!';
+            }
+
+            alert(message);
         }
+    } catch (error) {
+        console.error('Error verificando dependencias:', error);
+        alert('❌ Error al verificar dependencias');
     }
 }
-*/
 
 /**
  * Instalar dependencias - COMENTADO (ahora definido en ui-manager.js)
@@ -330,38 +365,110 @@ async function createVenv() {
 /**
  * Descargar modelos - COMENTADO (ahora definido en ui-manager.js)
  */
-/*
-function downloadModels() {
+async function downloadModels() {
     console.log('📥 downloadModels llamado');
     
-    if (window.UIManager) {
-        window.UIManager.downloadModels();
-    } else {
-        console.warn('⚠️ UIManager no disponible, usando fallback');
-        alert('ℹ️ Para descargar modelos, usa el menú lateral después de que la aplicación se inicialice completamente.');
+    try {
+        // Primero verificar si Ollama está corriendo
+        const checkResponse = await fetch('/system/check-dependencies');
+        const checkData = await checkResponse.json();
+        
+        if (!checkData.results || !checkData.results.ollama) {
+            alert('❌ Ollama no está instalado o no está corriendo.\n\nPor favor:\n1. Instala Ollama desde https://ollama.ai\n2. Inicia Ollama con: ollama serve');
+            return;
+        }
+        
+        // Mostrar opciones de modelos recomendados
+        const recommendedModels = [
+            'deepseek-coder:6.7b',
+            'deepseek-coder:latest',
+            'qwen2.5-coder:7b',
+            'llama3.2:3b',
+            'codellama:7b'
+        ];
+        
+        const modelName = prompt(
+            '¿Qué modelo deseas descargar?\n\n' +
+            'Modelos recomendados:\n' +
+            recommendedModels.join('\n') +
+            '\n\nEscribe el nombre del modelo:'
+        );
+        
+        if (modelName) {
+            if (window.ChatManager) {
+                window.ChatManager.addMessage(`📥 Descargando modelo ${modelName}... Esto puede tardar varios minutos.`, 'assistant');
+            }
+            
+            // Ejecutar comando de descarga
+            const response = await fetch('/system/download-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ models: [modelName] })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                if (window.ChatManager) {
+                    window.ChatManager.addMessage(data.message, 'assistant');
+                } else {
+                    alert(data.message);
+                }
+            } else {
+                if (window.ChatManager) {
+                    window.ChatManager.addMessage(data.message, 'assistant');
+                } else {
+                    alert(data.message);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error descargando modelos:', error);
+        alert('❌ Error al conectar con Ollama. Verifica que esté corriendo.');
     }
 }
-*/
 
 /**
- * Seleccionar modelo activo - COMENTADO (ahora definido en ui-manager.js)
+ * Seleccionar modelo activo - MEJORADO
  */
-/*
 async function selectActiveModel() {
     console.log('🤖 selectActiveModel llamado');
     
-    if (window.UIManager) {
-        window.UIManager.selectActiveModel();
-    } else {
-        console.warn('⚠️ UIManager no disponible, usando fallback');
-        try {
-            const response = await fetch('/system/list-models');
-            const data = await response.json();
+    try {
+        // Primero verificar si Ollama está corriendo
+        const checkResponse = await fetch('/system/check-dependencies');
+        const checkData = await checkResponse.json();
+        
+        if (!checkData.results || !checkData.results.ollama) {
+            alert('❌ Ollama no está instalado o no está corriendo.\n\nPor favor:\n1. Instala Ollama desde https://ollama.ai\n2. Inicia Ollama con: ollama serve');
+            return;
+        }
+        
+        // Obtener lista de modelos disponibles
+        const response = await fetch('/system/list-models');
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            alert(data.message);
+            return;
+        }
+        
+        if (data.models && data.models.length > 0) {
+            // Crear una lista numerada para facilitar la selección
+            let modelList = "Modelos instalados:\n\n";
+            data.models.forEach((model, index) => {
+                modelList += `${index + 1}. ${model}\n`;
+            });
+            modelList += "\nEscribe el NÚMERO del modelo que deseas activar:";
+
+            const selection = prompt(modelList);
             
-            if (data.status === 'success' && data.models.length > 0) {
-                const modelName = prompt('Selecciona un modelo:\n' + data.models.join('\n'));
+            if (selection) {
+                const index = parseInt(selection) - 1;
                 
-                if (modelName && data.models.includes(modelName)) {
+                // Validar si el usuario escribió un número válido
+                if (!isNaN(index) && index >= 0 && index < data.models.length) {
+                    const modelName = data.models[index];
                     const setResponse = await fetch('/system/set-model', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -371,16 +478,36 @@ async function selectActiveModel() {
                     const setData = await setResponse.json();
                     
                     if (setData.status === 'success') {
-                        alert(`✅ Modelo cambiado a: ${modelName}`);
+                        alert(`✅ Modelo activado correctamente: ${modelName}`);
+                    } else {
+                        alert(setData.message);
+                    }
+                } else {
+                    // Si no es un número, verificar si escribió el nombre completo
+                    const modelName = selection.trim();
+                    if (data.models.includes(modelName)) {
+                        const setResponse = await fetch('/system/set-model', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ model: modelName })
+                        });
+                        const setData = await setResponse.json();
+                        if (setData.status === 'success') {
+                            alert(`✅ Modelo activado correctamente: ${modelName}`);
+                        }
+                    } else {
+                        alert('❌ Selección no válida. Por favor, usa el número de la lista.');
                     }
                 }
             }
-        } catch (error) {
-            console.error('Error seleccionando modelo:', error);
+        } else {
+            alert('⚠️ No hay modelos instalados en Ollama.\n\nDescarga un modelo con:\nollama pull deepseek-coder:latest');
         }
+    } catch (error) {
+        console.error('Error seleccionando modelo:', error);
+        alert('❌ Error al conectar con Ollama. Verifica que esté corriendo.');
     }
 }
-*/
 
 /**
  * Crear archivo .env

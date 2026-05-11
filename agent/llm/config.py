@@ -94,8 +94,18 @@ class LLMConfig:
     # =========================
     @classmethod
     def get_fallback_order(cls) -> List[ProviderType]:
-        """Orden de fallback según modo"""
+        """Orden de fallback según modo y proveedor activo"""
+        active = os.getenv("ACTIVE_PROVIDER", "").lower()
+        
+        # Normalizar 'grok' a 'groq'
+        if active in ['grok', 'groq']:
+            return [ProviderType.GROQ] # Sin fallback a Ollama para depuración
+        elif active == "openai":
+            return [ProviderType.OPENAI, ProviderType.OLLAMA]
+        elif active == "anthropic":
+            return [ProviderType.ANTHROPIC, ProviderType.OLLAMA]
 
+        # Lógica por defecto según el modo
         if cls.MODE == "local":
             return [ProviderType.OLLAMA]
 
@@ -121,8 +131,8 @@ class LLMConfig:
         "fix": {"max_tokens": 4000, "temperature": 0.2},      # Backend: código preciso
         "enhance": {"max_tokens": 4000, "temperature": 0.2},   # Backend: código preciso
         "analyze": {"max_tokens": 1200, "temperature": 0.3},   # Backend: análisis técnico
-        "create": {"max_tokens": 4000, "temperature": 0.2},    # Backend: generación código
-        "design": {"max_tokens": 4000, "temperature": 0.3},    # Backend: diseño técnico
+        "create": {"max_tokens": 8000, "temperature": 0.2},    # Backend: generación código (aumentado para webs completas)
+        "design": {"max_tokens": 8000, "temperature": 0.3},    # Backend: diseño técnico (aumentado)
         "test": {"max_tokens": 2000, "temperature": 0.2},      # Backend: tests precisos
         "doc": {"max_tokens": 2000, "temperature": 0.3},       # Backend: documentación
         "chat": {"max_tokens": 1000, "temperature": 0.8},      # Frontend: conversacional creativo
@@ -135,8 +145,21 @@ class LLMConfig:
     # =========================
     @classmethod
     def get_primary_provider(cls, use_case: str = "fix") -> ProviderType:
-        """Siempre prioriza según modo"""
+        """Prioriza el proveedor activo configurado por el usuario"""
+        
+        # 1. Verificar si hay un proveedor activo explícito en .env
+        active = os.getenv("ACTIVE_PROVIDER", "").lower()
+        # Normalizar 'grok' a 'groq'
+        if active in ['grok', 'groq']:
+            return ProviderType.GROQ # Usamos Groq como proxy para xAI/Grok
+        elif active == "openai":
+            return ProviderType.OPENAI
+        elif active == "anthropic":
+            return ProviderType.ANTHROPIC
+        elif active == "ollama":
+            return ProviderType.OLLAMA
 
+        # 2. Si no hay activo, usar la lógica por defecto según el modo
         if cls.MODE == "local":
             return ProviderType.OLLAMA
 
