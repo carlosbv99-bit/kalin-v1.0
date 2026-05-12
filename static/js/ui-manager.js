@@ -1402,6 +1402,507 @@ if (typeof window !== 'undefined') {
     console.log('✅ Funciones registradas:', Object.keys(window).filter(k => ['exportExperience', 'importExperience', 'checkDependencies', 'createVenv', 'installDependencies', 'downloadModels', 'selectActiveModel'].includes(k)));
 }
 
+/**
+ * Mostrar modal de confirmación personalizado con modo oscuro
+ */
+function showConfirmModal(message, onConfirm, onCancel) {
+    // Crear overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0, 0, 0, 0.7)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '10000';
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.style.background = '#1e1e1e';
+    modal.style.color = '#ffffff';
+    modal.style.padding = '24px';
+    modal.style.borderRadius = '12px';
+    modal.style.maxWidth = '500px';
+    modal.style.width = '90%';
+    modal.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+    modal.style.border = '1px solid #333';
+    
+    // Mensaje
+    const messageDiv = document.createElement('div');
+    messageDiv.style.marginBottom = '20px';
+    messageDiv.style.whiteSpace = 'pre-line';
+    messageDiv.style.lineHeight = '1.6';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.textContent = message;
+    
+    // Botones
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '12px';
+    buttonContainer.style.justifyContent = 'flex-end';
+    
+    // Botón Cancelar
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.style.padding = '10px 20px';
+    cancelBtn.style.border = '1px solid #555';
+    cancelBtn.style.background = '#2d2d2d';
+    cancelBtn.style.color = '#ffffff';
+    cancelBtn.style.borderRadius = '6px';
+    cancelBtn.style.cursor = 'pointer';
+    cancelBtn.style.fontSize = '14px';
+    cancelBtn.onmouseenter = () => {
+        cancelBtn.style.background = '#3d3d3d';
+    };
+    cancelBtn.onmouseleave = () => {
+        cancelBtn.style.background = '#2d2d2d';
+    };
+    cancelBtn.onclick = () => {
+        document.body.removeChild(overlay);
+        if (onCancel) onCancel();
+    };
+    
+    // Botón Aceptar
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Aceptar';
+    confirmBtn.style.padding = '10px 20px';
+    confirmBtn.style.border = 'none';
+    confirmBtn.style.background = '#dc3545';
+    confirmBtn.style.color = '#ffffff';
+    confirmBtn.style.borderRadius = '6px';
+    confirmBtn.style.cursor = 'pointer';
+    confirmBtn.style.fontSize = '14px';
+    confirmBtn.onmouseenter = () => {
+        confirmBtn.style.background = '#c82333';
+    };
+    confirmBtn.onmouseleave = () => {
+        confirmBtn.style.background = '#dc3545';
+    };
+    confirmBtn.onclick = () => {
+        document.body.removeChild(overlay);
+        if (onConfirm) onConfirm();
+    };
+    
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(confirmBtn);
+    
+    modal.appendChild(messageDiv);
+    modal.appendChild(buttonContainer);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Focus en botón Aceptar
+    setTimeout(() => confirmBtn.focus(), 100);
+}
+
+/**
+ * Mostrar indicador de progreso de descarga de modelo
+ */
+function showModelDownloadIndicator(modelName) {
+    const indicator = document.getElementById('model-download-indicator');
+    const textSpan = document.getElementById('model-download-text');
+    
+    if (indicator && textSpan) {
+        textSpan.textContent = `Descargando modelo ${modelName}...`;
+        indicator.style.display = 'flex';
+        console.log(`📥 Indicador de descarga mostrado para: ${modelName}`);
+    }
+}
+
+/**
+ * Ocultar indicador de progreso de descarga de modelo
+ */
+function hideModelDownloadIndicator() {
+    const indicator = document.getElementById('model-download-indicator');
+    
+    if (indicator) {
+        indicator.style.display = 'none';
+        console.log('📥 Indicador de descarga ocultado');
+    }
+}
+
+/**
+ * Actualizar texto del indicador de descarga
+ */
+function updateModelDownloadStatus(message) {
+    const textSpan = document.getElementById('model-download-text');
+    
+    if (textSpan) {
+        textSpan.textContent = message;
+    }
+}
+
+/**
+ * Mostrar alerta personalizada con modo oscuro
+ */
+function showAlertModal(message, type = 'info') {
+    // Crear overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0, 0, 0, 0.7)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '10000';
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.style.background = '#1e1e1e';
+    modal.style.color = '#ffffff';
+    modal.style.padding = '24px';
+    modal.style.borderRadius = '12px';
+    modal.style.maxWidth = '450px';
+    modal.style.width = '90%';
+    modal.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+    modal.style.border = '1px solid #333';
+    
+    // Icono según tipo
+    let icon = 'ℹ️';
+    let borderColor = '#17a2b8';
+    if (type === 'success') {
+        icon = '✅';
+        borderColor = '#28a745';
+    } else if (type === 'error') {
+        icon = '❌';
+        borderColor = '#dc3545';
+    } else if (type === 'warning') {
+        icon = '⚠️';
+        borderColor = '#ffc107';
+    }
+    
+    modal.style.borderLeft = `4px solid ${borderColor}`;
+    
+    // Contenido
+    const contentDiv = document.createElement('div');
+    contentDiv.style.display = 'flex';
+    contentDiv.style.alignItems = 'flex-start';
+    contentDiv.style.gap = '12px';
+    contentDiv.style.marginBottom = '20px';
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = icon;
+    iconSpan.style.fontSize = '20px';
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.style.flex = '1';
+    messageDiv.style.whiteSpace = 'pre-line';
+    messageDiv.style.lineHeight = '1.6';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.textContent = message;
+    
+    contentDiv.appendChild(iconSpan);
+    contentDiv.appendChild(messageDiv);
+    
+    // Botón Cerrar
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Cerrar';
+    closeBtn.style.padding = '10px 24px';
+    closeBtn.style.border = 'none';
+    closeBtn.style.background = '#0066ff';
+    closeBtn.style.color = '#ffffff';
+    closeBtn.style.borderRadius = '6px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '14px';
+    closeBtn.style.float = 'right';
+    closeBtn.onmouseenter = () => {
+        closeBtn.style.background = '#0052cc';
+    };
+    closeBtn.onmouseleave = () => {
+        closeBtn.style.background = '#0066ff';
+    };
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    modal.appendChild(contentDiv);
+    modal.appendChild(closeBtn);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Auto-focus en botón cerrar
+    setTimeout(() => closeBtn.focus(), 100);
+}
+
+/**
+ * Cargar modelos de Ollama y mostrar opciones contextuales
+ */
+async function loadOllamaModelsList() {
+    const modelsList = document.getElementById('ollama-models-list');
+    if (!modelsList) return;
+    
+    try {
+        // Obtener lista de modelos instalados desde backend
+        const response = await fetch('/api/ollama/models');
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.models) {
+            modelsList.innerHTML = `
+                <div class="dropdown-item" style="color: #999; font-style: italic;">
+                    <span>Error al cargar modelos</span>
+                </div>
+            `;
+            return;
+        }
+        
+        // Lista de modelos disponibles para descargar
+        const availableModels = [
+            { name: 'llama3.2', displayName: '🦙 Llama 3.2', size: '3B', description: 'Ligero y rápido' },
+            { name: 'llama3.1', displayName: '🦙 Llama 3.1', size: '8B', description: 'Balanceado' },
+            { name: 'mistral', displayName: '💨 Mistral', size: '7B', description: 'Eficiente' },
+            { name: 'qwen2.5', displayName: '🔵 Qwen 2.5', size: '7B', description: 'Excelente para código' },
+            { name: 'codellama', displayName: '🦙 CodeLlama', size: '7B', description: 'Especializado en código' },
+            { name: 'deepseek-coder', displayName: '🔍 DeepSeek', size: '6.7B', description: 'Optimizado para programación' }
+        ];
+        
+        // Crear lista de modelos instalados para referencia rápida
+        const installedModelNames = data.models.filter(m => m.installed).map(m => m.name);
+        
+        // Limpiar lista
+        modelsList.innerHTML = '';
+        
+        // Agregar cada modelo con su estado
+        availableModels.forEach(model => {
+            const isInstalled = installedModelNames.some(installed => 
+                installed.includes(model.name) || model.name.includes(installed)
+            );
+            
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.style.position = 'relative';
+            item.style.cursor = 'pointer'; // AGREGAR: Indicar que es clickeable
+            
+            // Efecto hover para mejor UX
+            item.onmouseenter = function(e) {
+                this.style.background = '#e3f2fd';
+                // Si está instalado, también mostrar submenú
+                if (isInstalled) {
+                    showModelSubmenu(e, model.name);
+                }
+            };
+            item.onmouseleave = function(e) {
+                this.style.background = '';
+                // Si está instalado, ocultar submenú
+                if (isInstalled) {
+                    hideModelSubmenu(e, model.name);
+                }
+            };
+            
+            // Contenido principal del modelo
+            const content = document.createElement('div');
+            content.style.display = 'flex';
+            content.style.alignItems = 'center';
+            content.style.justifyContent = 'space-between';
+            content.style.width = '100%';
+            
+            // Información del modelo
+            const infoDiv = document.createElement('div');
+            infoDiv.style.flex = '1';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `${model.displayName} (${model.size})`;
+            nameSpan.style.fontWeight = isInstalled ? '600' : '400';
+            
+            const descSpan = document.createElement('span');
+            descSpan.textContent = ` - ${model.description}`;
+            descSpan.style.fontSize = '12px';
+            descSpan.style.color = '#666';
+            
+            infoDiv.appendChild(nameSpan);
+            infoDiv.appendChild(descSpan);
+            
+            // Indicador de estado
+            const statusSpan = document.createElement('span');
+            statusSpan.style.marginLeft = '8px';
+            statusSpan.style.fontSize = '12px';
+            
+            if (isInstalled) {
+                statusSpan.textContent = '✅';
+                statusSpan.title = 'Instalado - Clic para usar, hover para ver opciones';
+                statusSpan.style.color = '#28a745';
+            } else {
+                statusSpan.textContent = '⬇️';
+                statusSpan.title = 'No instalado - Clic para descargar';
+                statusSpan.style.color = '#ffc107';
+            }
+            
+            content.appendChild(infoDiv);
+            content.appendChild(statusSpan);
+            
+            // Botón de eliminar (solo visible en hover para modelos instalados)
+            if (isInstalled) {
+                const deleteBtn = document.createElement('span');
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.title = 'Eliminar modelo';
+                deleteBtn.style.marginLeft = '8px';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.opacity = '0'; // Oculto por defecto
+                deleteBtn.style.transition = 'opacity 0.2s';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`¿Estás seguro de borrar el modelo "${model.name}"?\n\nEsta acción no se puede deshacer.`)) {
+                        deleteOllamaModel(model.name);
+                    }
+                };
+                content.appendChild(deleteBtn);
+                
+                // Mostrar botón de eliminar en hover
+                item.onmouseenter = function(e) {
+                    this.style.background = '#e3f2fd';
+                    deleteBtn.style.opacity = '1'; // Mostrar botón
+                };
+                item.onmouseleave = function(e) {
+                    this.style.background = '';
+                    deleteBtn.style.opacity = '0'; // Ocultar botón
+                };
+            } else {
+                // Efecto hover simple para modelos no instalados
+                item.onmouseenter = function(e) {
+                    this.style.background = '#e3f2fd';
+                };
+                item.onmouseleave = function(e) {
+                    this.style.background = '';
+                };
+            }
+            
+            item.appendChild(content);
+            
+            // AGREGAR: Evento de clic - modelos instalados preguntan si se desea eliminar
+            item.onclick = (e) => {
+                e.stopPropagation();
+                if (isInstalled) {
+                    // Modelo instalado: preguntar si desea eliminar con modal oscuro
+                    const message1 = `¿Deseas eliminar este modelo de tu equipo?\n\nModelo: ${model.displayName} (${model.size})\n\nEsta acción no se puede deshacer.`;
+                    
+                    showConfirmModal(message1, () => {
+                        // PRIMERA CONFIRMACIÓN ACEPTADA - Mostrar segunda confirmación
+                        const message2 = `⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Estás COMPLETAMENTE SEGURO de que deseas eliminar "${model.name}"?\n\n• Se liberará espacio en disco\n• Tendrás que descargarlo nuevamente si lo necesitas\n• Esta acción NO se puede deshacer\n\nHaz clic en ACEPTAR para eliminar o CANCELAR para mantenerlo.`;
+                        
+                        showConfirmModal(message2, () => {
+                            // SEGUNDA CONFIRMACIÓN ACEPTADA - Eliminar modelo
+                            deleteOllamaModel(model.name);
+                        });
+                    });
+                } else {
+                    // Modelo no instalado: preguntar si desea descargar con modal oscuro
+                    const message = `¿Deseas descargar e instalar este modelo?\n\nModelo: ${model.displayName} (${model.size})\nDescripción: ${model.description}\n\nLa descarga puede tardar varios minutos dependiendo de tu conexión a internet.`;
+                    
+                    showConfirmModal(message, () => {
+                        // CONFIRMACIÓN ACEPTADA - Descargar modelo
+                        downloadLocalModel(model.name);
+                    });
+                }
+            };
+            
+            modelsList.appendChild(item);
+        });
+        
+        console.log(`✅ Cargados ${availableModels.length} modelos (${installedModelNames.length} instalados)`);
+        
+    } catch (error) {
+        console.error('❌ Error cargando modelos de Ollama:', error);
+        modelsList.innerHTML = `
+            <div class="dropdown-item" style="color: #dc3545;">
+                <span>Error: ${error.message}</span>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Mostrar submenú de modelo
+ */
+function showModelSubmenu(event, modelName) {
+    const submenu = document.getElementById(`submenu-${modelName}`);
+    if (submenu) {
+        // Ocultar otros submenús primero
+        hideAllSubmenus();
+        submenu.style.display = 'block';
+    }
+}
+
+/**
+ * Ocultar submenú de modelo
+ */
+function hideModelSubmenu(event, modelName) {
+    // No ocultar inmediatamente para permitir hover en el submenu
+    setTimeout(() => {
+        const submenu = document.getElementById(`submenu-${modelName}`);
+        if (submenu && !submenu.matches(':hover')) {
+            submenu.style.display = 'none';
+        }
+    }, 100);
+}
+
+/**
+ * Ocultar todos los submenús
+ */
+function hideAllSubmenus() {
+    const allSubmenus = document.querySelectorAll('#ollama-models-list .dropdown-submenu');
+    allSubmenus.forEach(menu => {
+        menu.style.display = 'none';
+    });
+}
+
+/**
+ * Activar modelo por nombre
+ */
+async function activateModelByName(modelName) {
+    try {
+        const response = await fetch('/system/set-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: modelName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showAlertModal(`Modelo activado: ${modelName}`, 'success');
+            if (window.UIManager) {
+                window.UIManager.loadActiveModel();
+            }
+        } else {
+            showAlertModal(`Error: ${data.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error activando modelo:', error);
+        showAlertModal(`Error al activar modelo: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Borrar modelo de Ollama
+ */
+async function deleteOllamaModel(modelName) {
+    try {
+        const response = await fetch('/api/ollama/delete-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: modelName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showAlertModal(`Modelo borrado: ${modelName}`, 'success');
+            // Recargar lista de modelos
+            setTimeout(() => loadOllamaModelsList(), 500);
+        } else {
+            showAlertModal(`Error: ${data.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error borrando modelo:', error);
+        showAlertModal(`Error al borrar modelo: ${error.message}`, 'error');
+    }
+}
+
 // Verificación adicional cuando DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Verificando funciones del menú de configuración...');

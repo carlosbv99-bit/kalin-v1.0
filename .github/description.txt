@@ -1,0 +1,1 @@
+Kalin AI - IDE inteligente con asistente de código basado en IA. Genera, modifica y visualiza código en tiempo real mediante chat conversacional. Soporta Python, JavaScript, HTML/CSS, Java y más. Multi-proveedor LLM (Ollama, Groq, OpenAI).

@@ -203,6 +203,7 @@ class CodeEditorManager {
         this.undoStack = []; // Historial para deshacer
         this.redoStack = []; // Historial para rehacer
         this.lastSavedState = ''; // Último estado guardado
+        this.previewUpdateTimeout = null; // Timeout para actualizar preview con debounce
     }
 
     /**
@@ -249,6 +250,18 @@ class CodeEditorManager {
             this.autoSaveCurrentFile();
             // Actualizar guías de indentación
             setTimeout(() => this.updateIndentGuides(), 10);
+            
+            // ACTUALIZAR PREVIEW AUTOMÁTICAMENTE SI ES HTML (con debounce)
+            if (this.currentFile && this.currentFile.name.endsWith('.html')) {
+                clearTimeout(this.previewUpdateTimeout);
+                this.previewUpdateTimeout = setTimeout(() => {
+                    const currentCode = this.codeEditor.value;
+                    if (window.PreviewManager && window.PreviewManager.isHTMLCode(currentCode)) {
+                        window.PreviewManager.render(currentCode);
+                        console.log('✅ Preview actualizado por cambio manual');
+                    }
+                }, 500); // Esperar 500ms después de dejar de escribir
+            }
         });
 
         // Manejar tecla Tab para indentación
@@ -909,6 +922,14 @@ class CodeEditorManager {
         this.displayFileInEditor(this.currentFile);
         
         console.log('✅ Código mostrado en editor:', fileName, '-', code.length, 'chars');
+        
+        // ACTUALIZAR PREVIEW AUTOMÁTICAMENTE SI ES HTML
+        setTimeout(() => {
+            if (window.PreviewManager && window.PreviewManager.isHTMLCode(code)) {
+                window.PreviewManager.render(code);
+                console.log('✅ Preview actualizado automáticamente');
+            }
+        }, 100);
     }
 
     /**

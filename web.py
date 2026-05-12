@@ -873,6 +873,152 @@ def install_pending_deps():
             'message': str(e)
         }), 500
 
+@app.route("/system/check-model", methods=['POST'])
+def check_model():
+    """Verifica si un modelo específico está instalado en Ollama"""
+    import subprocess
+    
+    data = request.get_json()
+    model_name = data.get('model', '')
+    
+    if not model_name:
+        return jsonify({
+            'status': 'error',
+            'message': 'No se especificó un modelo'
+        }), 400
+    
+    try:
+        # Ejecutar ollama list para verificar
+        result = subprocess.run(
+            ['ollama', 'list'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0:
+            # Ollama no está disponible o error
+            return jsonify({
+                'status': 'error',
+                'message': 'Ollama no está disponible',
+                'installed': False
+            }), 500
+        
+        # Verificar si el modelo está en la lista
+        # Buscar coincidencia exacta o parcial (ej: qwen2.5 coincide con qwen2.5:latest)
+        lines = result.stdout.strip().split('\n')
+        installed = False
+        for line in lines[1:]:  # Saltar header
+            if line.strip() and model_name in line:
+                installed = True
+                break
+        
+        return jsonify({
+            'status': 'success',
+            'installed': installed,
+            'model': model_name
+        })
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': 'Timeout verificando modelo',
+            'installed': False
+        }), 500
+    except FileNotFoundError:
+        return jsonify({
+            'status': 'error',
+            'message': 'Ollama no está instalado',
+            'installed': False
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'installed': False
+        }), 500
+
+@app.route("/system/download-model", methods=['POST'])
+def download_single_model():
+    """Descarga un único modelo de Ollama"""
+    import subprocess
+    
+    data = request.get_json()
+    model_name = data.get('model', '')
+    
+    if not model_name:
+        return jsonify({
+            'status': 'error',
+            'message': '❌ No se especificó un modelo'
+        }), 400
+    
+    try:
+        # Verificar si ya está instalado
+        check = subprocess.run(
+            ['ollama', 'list'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if check.returncode == 0 and model_name in check.stdout:
+            return jsonify({
+                'status': 'success',
+                'message': f'✅ {model_name} ya está instalado',
+                'already_installed': True
+            })
+        
+        # Descargar modelo
+        result = subprocess.run(
+            ['ollama', 'pull', model_name],
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minutos máximo
+        )
+        
+        if result.returncode == 0:
+            # Refrescar modelos en Kalin
+            try:
+                from agent.llm.provider_manager import get_manager
+                manager = get_manager()
+                if 'ollama' in manager.providers:
+                    ollama_provider = manager.providers['ollama']
+                    if hasattr(ollama_provider, 'refresh_models'):
+                        ollama_provider.refresh_models()
+            except Exception as e:
+                print(f"⚠️ No se pudieron refrescar modelos: {e}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': f'✅ {model_name} descargado correctamente'
+            })
+        else:
+            error_detail = result.stderr.strip() if result.stderr else 'Error desconocido'
+            return jsonify({
+                'status': 'error',
+                'message': f'❌ Error al descargar {model_name}: {error_detail}'
+            }), 500
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': f'⏱️ Timeout descargando {model_name} (tardó más de 10 minutos)'
+        }), 500
+    except FileNotFoundError:
+        return jsonify({
+            'status': 'error',
+            'message': '❌ Ollama no está instalado'
+        }), 500
+    except Exception as e:
+        error_msg = str(e)
+        if 'certificate' in error_msg.lower() or 'ssl' in error_msg.lower():
+            error_msg += '\n\n💡 Sugerencia: Ejecuta "ollama pull ' + model_name + '" en PowerShell para ver el error detallado.'
+        
+        return jsonify({
+            'status': 'error',
+            'message': f'❌ Error: {error_msg}'
+        }), 500
+
 @app.route("/system/download-models", methods=['POST'])
 def download_models():
     """Descarga los modelos seleccionados de Ollama"""
@@ -1260,6 +1406,10 @@ def list_models():
     import subprocess
     
     try:
+        # Recargar .env para obtener configuraciones actualizadas
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        
         all_models = []
         
         # 1. Obtener modelos locales de Ollama
@@ -1281,21 +1431,12 @@ def list_models():
         except (FileNotFoundError, Exception):
             pass # Si Ollama no está, simplemente continuamos con los de nube
         
-        # 2. Obtener modelos de Nube configurados en .env
-        from dotenv import load_dotenv
-        load_dotenv()
+        # 2. Obtener modelos de Nube configurados en .env (DINÁMICO)
+        from agent.llm.config import LLMConfig
+        cloud_providers = LLMConfig.get_configured_cloud_providers()
         
-        if os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY'):
-            model_name = os.getenv('GROK_MODEL', 'llama-3.1-8b-instant')
-            # Mostrar una etiqueta más amigable con indicador de nube
-            display_name = f"{model_name} (Nube - Groq)"
-            all_models.append(display_name)
-        
-        if os.getenv('OPENAI_API_KEY'):
-            all_models.append(f"{os.getenv('OPENAI_MODEL', 'gpt-4o')} (Nube - OpenAI)")
-            
-        if os.getenv('ANTHROPIC_API_KEY'):
-            all_models.append(f"{os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet')} (Nube - Anthropic)")
+        for provider_info in cloud_providers:
+            all_models.append(provider_info['display_name'])
 
         if not all_models:
             return jsonify({
@@ -1303,15 +1444,18 @@ def list_models():
                 'message': '❌ No hay modelos locales ni APIs de nube configuradas.'
             }), 404
 
-        # Agregar información sobre qué proveedores están configurados
+        # Agregar información sobre qué proveedores están configurados (DINÁMICO)
+        from agent.llm.config import LLMConfig, ProviderType
+        
         providers_configured = {
             'ollama': len([m for m in all_models if '(Local)' in m]) > 0,
-            'groq': bool(os.getenv('GROK_API_KEY') or os.getenv('GROQ_API_KEY')),
-            'openai': bool(os.getenv('OPENAI_API_KEY')),
-            'anthropic': bool(os.getenv('ANTHROPIC_API_KEY')),
-            'gemini': bool(os.getenv('GEMINI_API_KEY')),
-            'mistral': bool(os.getenv('MISTRAL_API_KEY'))
         }
+        
+        # Agregar dinámicamente todos los proveedores de nube configurados
+        for provider_type in ProviderType:
+            if provider_type == ProviderType.OLLAMA:
+                continue
+            providers_configured[provider_type.value] = LLMConfig.is_configured(provider_type)
 
         return jsonify({
             'status': 'success',
@@ -1326,11 +1470,174 @@ def list_models():
             'message': f'❌ Error al listar modelos: {str(e)}'
         }), 500
 
+@app.route("/api/ollama/models")
+def get_ollama_models():
+    """Obtiene lista detallada de modelos Ollama con estado de instalación"""
+    import subprocess
+    
+    try:
+        # Lista de modelos disponibles para descargar
+        available_models = [
+            {'name': 'llama3.2', 'size': '3B', 'description': 'Ligero y rápido'},
+            {'name': 'llama3.1', 'size': '8B', 'description': 'Balanceado'},
+            {'name': 'mistral', 'size': '7B', 'description': 'Eficiente'},
+            {'name': 'qwen2.5', 'size': '7B', 'description': 'Excelente para código'},
+            {'name': 'codellama', 'size': '7B', 'description': 'Especializado en código'},
+            {'name': 'deepseek-coder', 'size': '6.7B', 'description': 'Optimizado para programación'}
+        ]
+        
+        # Obtener modelos instalados
+        installed_models = []
+        try:
+            result = subprocess.run(
+                ['ollama', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                for line in lines[1:]:
+                    if line.strip():
+                        parts = line.split()
+                        if parts:
+                            model_name = parts[0]
+                            model_size = parts[1] if len(parts) > 1 else 'Unknown'
+                            installed_models.append({
+                                'name': model_name,
+                                'size': model_size,
+                                'installed': True
+                            })
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Ollama no está instalado o no responde: {str(e)}'
+            }), 500
+        
+        # Marcar estado de instalación para cada modelo disponible
+        for model in available_models:
+            model['installed'] = any(
+                model['name'] in inst['name'] or inst['name'] in model['name']
+                for inst in installed_models
+            )
+        
+        return jsonify({
+            'status': 'success',
+            'models': available_models,
+            'installed': installed_models
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error al obtener modelos: {str(e)}'
+        }), 500
+
+@app.route("/api/ollama/delete-model", methods=['POST'])
+def delete_ollama_model():
+    """Borra un modelo de Ollama buscando el nombre exacto instalado"""
+    import subprocess
+    
+    data = request.get_json()
+    model_name = data.get('model', '')
+    
+    if not model_name:
+        return jsonify({
+            'status': 'error',
+            'message': 'No se especificó un modelo'
+        }), 400
+    
+    try:
+        # PRIMERO: Obtener lista de modelos instalados para encontrar el nombre exacto
+        result_list = subprocess.run(
+            ['ollama', 'list'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        exact_model_name = None
+        if result_list.returncode == 0:
+            lines = result_list.stdout.strip().split('\n')
+            # Buscar modelo que coincida (puede tener tag como :latest, :7b, etc.)
+            for line in lines[1:]:  # Saltar header
+                if line.strip() and model_name in line:
+                    # Extraer nombre completo (primera columna)
+                    parts = line.split()
+                    if parts:
+                        exact_model_name = parts[0]
+                        break
+        
+        # Si no se encontró el nombre exacto, usar el proporcionado
+        if not exact_model_name:
+            exact_model_name = model_name
+        
+        # Ejecutar comando ollama rm con el nombre exacto
+        result = subprocess.run(
+            ['ollama', 'rm', exact_model_name],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'status': 'success',
+                'message': f'Modelo {exact_model_name} borrado correctamente'
+            })
+        else:
+            # Si falla, intentar con variaciones comunes del nombre
+            common_tags = [':latest', ':7b', ':8b', ':3b', ':14b', ':72b']
+            for tag in common_tags:
+                if not model_name.endswith(tag):
+                    alternative_name = model_name + tag
+                    result_alt = subprocess.run(
+                        ['ollama', 'rm', alternative_name],
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+                    if result_alt.returncode == 0:
+                        return jsonify({
+                            'status': 'success',
+                            'message': f'Modelo {alternative_name} borrado correctamente'
+                        })
+            
+            # Si todas las alternativas fallan, devolver error original
+            return jsonify({
+                'status': 'error',
+                'message': f'Error al borrar modelo: {result.stderr}'
+            }), 500
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'message': 'Tiempo de espera agotado al borrar modelo'
+        }), 500
+    except FileNotFoundError:
+        return jsonify({
+            'status': 'error',
+            'message': 'Ollama no está instalado'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
+        }), 500
+
 @app.route("/system/set-model", methods=['POST'])
 def set_model():
     """Cambia el modelo activo (Local Ollama o Nube API) y guarda en .env"""
+    print(f"\n{'='*60}")
+    print(f"🔍 [set-model] ENDPOINT LLAMADO")
+    print(f"{'='*60}")
+    
     data = request.get_json()
     model_raw = data.get('model', '')
+    
+    print(f"🔍 [set-model] Datos recibidos: {data}")
+    print(f"🔍 [set-model] model_raw: '{model_raw}'")
     
     if not model_raw:
         return jsonify({
@@ -1347,7 +1654,11 @@ def set_model():
         model_name = model_raw.split(' (')[0].strip()
         
         manager = get_manager()
-        is_cloud = "(Nube" in model_raw
+        
+        # Detectar si es cloud basado en el parámetro provider o en el formato del nombre
+        is_cloud = "(Nube" in model_raw or data.get('provider') in ['openai', 'anthropic', 'groq', 'gemini', 'mistral', 'mimo']
+        
+        print(f"🔍 [set-model] model_name: {model_name}, is_cloud: {is_cloud}, provider: {data.get('provider')}")
         
         # Determinar el tipo de modelo y actualizar variables de entorno
         if is_cloud:
@@ -1363,6 +1674,10 @@ def set_model():
                 provider_type = "GEMINI"
             elif 'Mistral' in model_raw:
                 provider_type = "MISTRAL"
+            elif 'MiMo' in model_raw or 'mimo' in model_raw:
+                provider_type = "MIMO"
+            
+            print(f"🔍 [set-model] provider_type detectado: {provider_type}")
             
             env_var_model = f"{provider_type}_MODEL"
             env_var_key = f"{provider_type}_API_KEY"
@@ -1400,27 +1715,31 @@ def set_model():
 
         # Guardar en archivo .env para persistencia
         env_path = os.path.join(os.getcwd(), '.env')
+        print(f"🔍 [set-model] Guardando en .env: {env_path}")
         if os.path.exists(env_path):
             with open(env_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
+            
+            print(f"🔍 [set-model] Líneas leídas: {len(lines)}")
             
             updated_lines = []
             model_updated = False
             provider_updated = False
             
             for line in lines:
+                stripped = line.strip()
                 # Actualizar la variable del modelo específico
-                if is_cloud and line.startswith(f"{provider_type}_MODEL="):
+                if is_cloud and (stripped.startswith(f"{provider_type}_MODEL=") or stripped.startswith(f"# {provider_type}_MODEL=")):
                     updated_lines.append(f"{env_var_model}={model_name}\n")
                     model_updated = True
-                elif not is_cloud and line.startswith('OLLAMA_MODEL='):
+                elif not is_cloud and stripped.startswith('OLLAMA_MODEL='):
                     updated_lines.append(f'OLLAMA_MODEL={model_name}\n')
                     model_updated = True
                 # Actualizar la API Key si se proporcionó
-                elif is_cloud and api_key and line.startswith(f"{provider_type}_API_KEY="):
+                elif is_cloud and api_key and (stripped.startswith(f"{provider_type}_API_KEY=") or stripped.startswith(f"# {provider_type}_API_KEY=")):
                     updated_lines.append(f"{env_var_key}={api_key}\n")
                 # Actualizar el proveedor activo
-                elif line.startswith('ACTIVE_PROVIDER='):
+                elif stripped.startswith('ACTIVE_PROVIDER='):
                     # Normalizar a 'groq' si es 'grok'
                     current_provider = os.environ['ACTIVE_PROVIDER']
                     normalized = 'groq' if current_provider.lower() in ['grok', 'groq'] else current_provider
@@ -1439,12 +1758,30 @@ def set_model():
                 updated_lines.append(f'ACTIVE_PROVIDER={normalized}\n')
             # Agregar API Key si es cloud y se proporcionó pero no estaba en .env
             if is_cloud and api_key:
-                api_key_exists = any(line.startswith(f"{provider_type}_API_KEY=") for line in lines)
+                print(f"🔍 [set-model] Intentando guardar API Key para {provider_type}")
+                # Verificar tanto si existe la línea comentada como sin comentar
+                api_key_exists = any(
+                    line.strip().startswith(f"{provider_type}_API_KEY=") or 
+                    line.strip().startswith(f"# {provider_type}_API_KEY=")
+                    for line in lines
+                )
+                print(f"🔍 [set-model] API Key existe: {api_key_exists}")
                 if not api_key_exists:
+                    print(f"✅ [set-model] Agregando nueva línea de API Key")
                     updated_lines.append(f'{env_var_key}={api_key}\n')
+                else:
+                    # Si existe pero está comentada o vacía, actualizarla
+                    for i, line in enumerate(updated_lines):
+                        if line.strip().startswith(f"# {provider_type}_API_KEY=") or \
+                           (line.startswith(f"{provider_type}_API_KEY=") and '=' in line and line.split('=')[1].strip() == ''):
+                            print(f"✅ [set-model] Actualizando línea existente de API Key")
+                            updated_lines[i] = f'{env_var_key}={api_key}\n'
+                            break
             
             with open(env_path, 'w', encoding='utf-8') as f:
                 f.writelines(updated_lines)
+            
+            print(f"✅ [set-model] Archivo .env actualizado con {len(updated_lines)} líneas")
         
         # Recargar configuración del manager para aplicar cambios inmediatamente
         load_dotenv(override=True)
@@ -1473,9 +1810,10 @@ def set_model():
 
 @app.route("/system/current-model")
 def current_model():
-    """Obtiene el modelo actualmente activo (Local o Nube)"""
+    """Obtiene el modelo actualmente activo (Local o Nube) - DINÁMICO"""
     try:
         from agent.llm.provider_manager import get_manager
+        from agent.llm.config import LLMConfig, ProviderType
         import os
         import subprocess
         
@@ -1486,13 +1824,36 @@ def current_model():
         if active_provider in ['grok', 'groq']:
             active_provider = 'groq'
         
-        # Determinar el modelo actual basado en el proveedor activo
-        if active_provider == 'groq':
-            model_name = os.getenv('GROK_MODEL', 'llama-3.1-8b-instant')
-            current = f"{model_name} (Nube - Groq)"
-        elif active_provider == 'openai':
-            current = os.getenv('OPENAI_MODEL', 'gpt-4-turbo') + ' (Nube - OpenAI)'
-        else:
+        # Determinar el modelo actual basado en el proveedor activo (DINÁMICO)
+        current = None
+        
+        # Buscar en los proveedores configurados
+        for provider_type in ProviderType:
+            provider_value = provider_type.value
+            
+            # Si es el proveedor activo
+            if active_provider == provider_value or (provider_value == 'groq' and active_provider == 'groq'):
+                config = LLMConfig.PROVIDERS.get(provider_type)
+                if config:
+                    model_name = config.get('model', 'unknown')
+                    
+                    # Obtener nombre amigable del proveedor
+                    display_names = {
+                        'openai': 'OpenAI',
+                        'anthropic': 'Anthropic',
+                        'azure': 'Azure',
+                        'huggingface': 'HuggingFace',
+                        'groq': 'Groq',
+                        'gemini': 'Gemini',
+                        'mistral': 'Mistral',
+                        'mimo': 'MiMo',
+                    }
+                    display_name = display_names.get(provider_value, provider_value.title())
+                    current = f"{model_name} (Nube - {display_name})"
+                    break
+        
+        # Si no se encontró, usar Ollama por defecto
+        if not current:
             current = os.getenv('OLLAMA_MODEL', 'deepseek-coder:latest') + ' (Local)'
         
         # Obtener modelos instalados de Ollama (solo si es relevante)

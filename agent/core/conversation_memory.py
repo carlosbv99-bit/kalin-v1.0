@@ -34,7 +34,7 @@ class ConversationMemory:
     - Métricas de uso y patrones conversacionales
     """
     
-    def __init__(self, max_history=20, session_id=None, storage_dir=None):
+    def __init__(self, max_history=50, session_id=None, storage_dir=None):
         self.max_history = max_history
         self.session_id = session_id or f"session_{int(datetime.now().timestamp())}"
         
@@ -63,8 +63,8 @@ class ConversationMemory:
             'session_start': datetime.now().isoformat()
         }
         
-        # DESACTIVADO: No cargar memoria anterior para evitar procesar historial antiguo
-        # self._load_session()
+        # ACTIVADO: Cargar memoria anterior para mantener contexto entre sesiones
+        self._load_session()
         
         logger.info(f"ConversationMemory initialized: session={self.session_id}")
         
@@ -94,9 +94,13 @@ class ConversationMemory:
         
         # Limitar historial al tamaño máximo
         if len(self.conversation_history) > self.max_history:
-            removed = self.conversation_history[:-self.max_history]
-            self.conversation_history = self.conversation_history[-self.max_history:]
-            logger.debug(f"History trimmed: removed {len(removed)} entries")
+            # En lugar de eliminar, comprimir entradas antiguas
+            if len(self.conversation_history) > 30:  # Si excede 30, comprimir
+                self.compress_old_entries(keep_recent=15)
+            else:
+                removed = self.conversation_history[:-self.max_history]
+                self.conversation_history = self.conversation_history[-self.max_history:]
+                logger.debug(f"History trimmed: removed {len(removed)} entries")
         
         # Actualizar métricas
         self._update_metrics(intention, args)
@@ -121,9 +125,9 @@ class ConversationMemory:
             "interaction_count": self.metrics['total_interactions']
         })
         
-        # DESACTIVADO: Auto-guardar deshabilitado para evitar acumulación de historial
-        # if self.metrics['total_interactions'] % 5 == 0:
-        #     self.save_to_file()
+        # ACTIVADO: Auto-guardar cada 5 interacciones para preservar contexto
+        if self.metrics['total_interactions'] % 5 == 0:
+            self.save_to_file()
     
     def _update_analyze_context(self, args: Dict, result: Any):
         """Actualiza contexto después de analizar un archivo"""
@@ -184,9 +188,10 @@ class ConversationMemory:
         
         # Guardar el código generado en el contexto actual para referencias futuras
         if result and isinstance(result, str):
-            self.current_context["last_generated_code"] = result[:2000]  # Guardar primeros 2000 chars
+            # AMPLIADO: Guardar hasta 10000 caracteres para mejor contexto (antes 2000)
+            self.current_context["last_generated_code"] = result[:10000]
             self.current_context["last_generated_code_length"] = len(result)
-            logger.info(f"Saved generated code to context: {len(result)} chars")
+            logger.info(f"Saved generated code to context: {len(result)} chars (window: 10000)")
     
     def _update_scan_context(self, args: Dict, result: Any):
         """Actualiza contexto después de escanear proyecto"""
@@ -337,6 +342,69 @@ class ConversationMemory:
             'session_start': datetime.now().isoformat()
         }
         logger.info("Conversation history cleared")
+    
+    def compress_old_entries(self, keep_recent=10):
+        """
+        Comprime entradas antiguas del historial manteniendo las más recientes.
+        Útil para conversaciones largas que exceden el contexto óptimo.
+        
+        Args:
+            keep_recent: Número de entradas recientes a mantener sin comprimir
+        """
+        if len(self.conversation_history) <= keep_recent:
+            return  # No necesita compresión
+        
+        old_entries = self.conversation_history[:-keep_recent]
+        recent_entries = self.conversation_history[-keep_recent:]
+        
+        # Crear resumen de entradas antiguas
+        summary = self._create_history_summary(old_entries)
+        
+        # Reemplazar entradas antiguas con resumen
+        compressed_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "compressed_summary",
+            "summary": summary,
+            "original_count": len(old_entries),
+            "compressed_at": datetime.now().isoformat()
+        }
+        
+        self.conversation_history = [compressed_entry] + recent_entries
+        logger.info(f"Compressed {len(old_entries)} entries into summary, kept {keep_recent} recent")
+    
+    def _create_history_summary(self, entries: List[Dict]) -> str:
+        """Crea un resumen conciso de entradas antiguas del historial"""
+        if not entries:
+            return "No hay historial previo"
+        
+        # Contar intenciones en entradas antiguas
+        intention_counts = {}
+        files_mentioned = set()
+        
+        for entry in entries:
+            intention = entry.get('intention', 'unknown')
+            intention_counts[intention] = intention_counts.get(intention, 0) + 1
+            
+            # Extraer archivos mencionados
+            args = entry.get('args', {})
+            if 'arg' in args and args['arg']:
+                files_mentioned.add(os.path.basename(args['arg']))
+        
+        # Construir resumen
+        summary_parts = []
+        
+        if intention_counts:
+            top_intentions = sorted(intention_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+            intentions_str = ", ".join([f"{intent}({count})" for intent, count in top_intentions])
+            summary_parts.append(f"Acciones previas: {intentions_str}")
+        
+        if files_mentioned:
+            files_list = ", ".join(list(files_mentioned)[:5])
+            summary_parts.append(f"Archivos trabajados: {files_list}")
+        
+        summary_parts.append(f"Total interacciones anteriores: {len(entries)}")
+        
+        return " | ".join(summary_parts)
     
     def save_to_file(self, filepath: str = None):
         """Guarda la memoria completa en disco"""

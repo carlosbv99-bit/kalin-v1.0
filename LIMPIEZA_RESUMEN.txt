@@ -1,0 +1,58 @@
+================================================================================
+🧹 RESUMEN RÁPIDO - LIMPIEZA ARQUITECTURA KALIN
+================================================================================
+
+ARCHIVOS A ELIMINAR POR CATEGORÍA:
+───────────────────────────────────────────────────────────────────────────────
+
+📄 DOCUMENTACIÓN (~120 archivos, ~1.5 MB)
+   ├── Implementaciones completadas (FIX_*, IMPLEMENTACION_*, etc.)
+   ├── Resúmenes temporales (RESUMEN_*, *_SUMMARY, etc.)
+   ├── Guías obsoletas (COMO_*, GUIA_*, DEBUG_*)
+   ├── Preparación GitHub (*GITHUB*, PREPARACION_*)
+   ├── Arquitectura antigua (ARQUITECTURA_*, DIAGRAMA_*, MIGRACION_*)
+   ├── Features específicas (ANDROID_, DOCKER_, MULTI_PROVIDER_*)
+   ├── Testing (TESTING_*, CI_CD_*, RUN_TEST_*)
+   └── Varios (CHANGELOG_v1.1, README_*, INFORME_*, etc.)
+
+🔧 SCRIPTS TEMPORALES (~35 archivos, ~500 KB)
+   ├── Backups (backup_*.py, auto_backup_*.py)
+   ├── Preparación GitHub (auto_github_prep.*, prepare_*.*)
+   ├── Limpieza (clean_*.py, delete_backups.*)
+   ├── Diagnóstico (diagnose.*, check_*.py, verify_*.py)
+   ├── Testing antiguo (test_*.py, run_all_tests.py)
+   └── Otros (crear_readme.py, generar_pdf.py, etc.)
+
+📱 ANDROID/GRADLE (~9 items, ~50-100 MB) [OPCIONAL]
+   ├── app/ (directorio)
+   ├── gradle/ (directorio)
+   └── Archivos Gradle (*.gradle.kts, gradlew, etc.)
+
+📁 DIRECTORIOS (~4 dirs, ~10-50 MB)
+   ├── backups/
+   ├── __pycache__/
+   ├── .gradle/
+   └── logs/ (opcional)
+
+───────────────────────────────────────────────────────────────────────────────
+TOTAL ESTIMADO: ~168 archivos/directorios | ~60-150 MB liberados
+───────────────────────────────────────────────────────────────────────────────
+
+✅ QUÉ SE MANTIENE:
+   • README.md, CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md
+   • Código fuente: agent/, static/, templates/, tests/
+   • Configuración: .env, requirements.txt, web.py, Dockerfile
+   • Sesiones activas: sessions/
+   • Memoria: experience_memory/
+
+⚠️  ANTES DE EJECUTAR:
+   1. Lee LIMPIEZA_ARQUITECTURA_PLAN.md para lista completa
+   2. Haz commit de tu trabajo actual
+   3. Decide si eliminar archivos Android (si no usas Android)
+
+🚀 PARA EJECUTAR:
+   python clean_project_architecture.py
+   
+   (El script muestra lista completa y pide confirmación)
+
+================================================================================

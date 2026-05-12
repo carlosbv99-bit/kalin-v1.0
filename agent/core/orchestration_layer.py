@@ -141,23 +141,54 @@ class OrchestrationLayer:
                 # Detectar lenguaje del código existente
                 detected_lang = self._detect_language(existing_code)
                 
-                # Si no hay bloqueo establecido, crearlo
+                # Si no hay bloqueo establecido, crearlo INMEDIATAMENTE
                 if session_id not in self.session_language_lock and detected_lang != 'unknown':
                     self.session_language_lock[session_id] = detected_lang
-                    logger.info(f"🔒 Lenguaje bloqueado para sesión {session_id[:8]}: {detected_lang}")
+                    logger.info(f"🔒 Lenguaje bloqueado para sesión {session_id[:8]}: {detected_lang.upper()}")
                 
-                # Si hay bloqueo, forzar ese lenguaje en el prompt del plan
+                # Si hay bloqueo, VALIDAR que el nuevo fragmento sea del mismo lenguaje
                 if session_id in self.session_language_lock:
                     locked_lang = self.session_language_lock[session_id]
+                    
+                    # Detectar lenguaje del NUEVO fragmento generado por LLM
+                    new_fragment_check = str(final_result).strip()
+                    new_detected_lang = self._detect_language(new_fragment_check)
+                    
+                    # VALIDACIÓN CRÍTICA: Si el LLM generó código en lenguaje diferente, RECHAZAR
+                    if new_detected_lang != 'unknown' and new_detected_lang != locked_lang:
+                        logger.warning(f"⚠️ BLOQUEO ACTIVADO: LLM intentó cambiar de {locked_lang.upper()} a {new_detected_lang.upper()}. Rechazando...")
+                        
+                        # Mantener código original y advertir al usuario
+                        final_result = existing_code
+                        respuesta_text = validated_result.get('respuesta', '')
+                        validated_result['respuesta'] = f"{respuesta_text}\n\n⚠️ ERROR DETECTADO: El sistema intentó cambiar el lenguaje de {locked_lang.upper()} a {new_detected_lang.upper()}, pero esto está PROHIBIDO. Se mantuvo el código {locked_lang.upper()} original.\n\nPor favor, reformula tu petición especificando que quieres AGREGAR/MODIFICAR en {locked_lang.upper()}."
+                        
+                        # Retornar inmediatamente sin aplicar cambios
+                        return {
+                            'respuesta': validated_result['respuesta'],
+                            'tool_results': results,
+                            'intention': intention,
+                            'language_lock_violation': True,
+                            'locked_language': locked_lang
+                        }
+                    
                     # Modificar el prompt en el plan si es intención 'create'
                     if intention == 'create' and plan.get('steps'):
                         for step in plan['steps']:
                             if 'generate' in str(step.get('action', '')):
-                                # Agregar instrucción de lenguaje bloqueado al prompt original
+                                # Agregar instrucción MUY EXPLÍCITA de lenguaje bloqueado al prompt original
                                 original_prompt = step.get('prompt', '')
                                 if original_prompt:
-                                    step['prompt'] = f"{original_prompt}\n\n⚠️ CRÍTICO - LENGUAJE BLOQUEADO: {locked_lang.upper()}\n- DEBES usar SOLO {locked_lang.upper()}\n- PROHIBIDO cambiar a otro lenguaje\n- AGREGA/MODIFICA el código existente"
-                                    logger.info(f"🔒 Prompt modificado con lenguaje bloqueado: {locked_lang}")
+                                    step['prompt'] = f"""{original_prompt}
+
+🔒🔒🔒 CRÍTICO - LENGUAJE BLOQUEADO: {locked_lang.upper()} 🔒🔒🔒
+- El código actual ES {locked_lang.upper()}
+- DEBES usar SOLO {locked_lang.upper()}
+- PROHIBIDO cambiar a Python, JavaScript u otro lenguaje
+- NO regeneres el archivo completo
+- AGREGA o MODIFICA el código existente en {locked_lang.upper()}
+- Responde ÚNICAMENTE con código {locked_lang.upper()} válido"""
+                                    logger.info(f"🔒 Prompt reforzado con lenguaje bloqueado: {locked_lang.upper()}")
             
             # FASE 4: Ejecución (coordina agentes)
             result = self._execute_plan(plan, context, utils, context_mgr)
@@ -404,10 +435,20 @@ class OrchestrationLayer:
             elif any(kw in existing_code for kw in ['function', 'const ', 'let ', 'var ', 'console.log']):
                 lang_detected = 'javascript'
             
-            # Si detectamos un lenguaje, agregar instrucción MUY CLARA al prompt
+            # Si detectamos un lenguaje, bloquearlo para esta sesión
+            session_id = context.get('session_id', 'default')
             if lang_detected != 'unknown':
-                user_input = f"{user_input}\n\n⚠️ CRÍTICO - LENGUAJE OBLIGATORIO: {lang_detected.upper()}\n- El código actual ES {lang_detected.upper()}\n- DEBES usar SOLO {lang_detected.upper()}\n- PROHIBIDO usar Python, matplotlib u otro lenguaje\n- AGREGA al código existente, NO lo reemplaces\n- Responde ÚNICAMENTE con código {lang_detected.upper()} válido"
-                logger.info(f"Forzando lenguaje {lang_detected} para modificación")
+                # Bloquear lenguaje si no está ya bloqueado
+                if session_id not in self.session_language_lock:
+                    self.session_language_lock[session_id] = lang_detected
+                    logger.info(f"🔒 BLOQUEO AUTOMÁTICO: Lenguaje {lang_detected.upper()} bloqueado para sesión {session_id[:8]}")
+                else:
+                    # Usar lenguaje bloqueado existente
+                    lang_detected = self.session_language_lock[session_id]
+                    logger.info(f"🔒 Usando lenguaje bloqueado: {lang_detected.upper()}")
+                
+                # Agregar instrucción MUY FUERTE al prompt
+                user_input = f"{user_input}\n\n🔒🔒🔒 CRÍTICO - LENGUAJE OBLIGATORIO: {lang_detected.upper()} 🔒🔒🔒\n- El código actual ES {lang_detected.upper()}\n- DEBES usar SOLO {lang_detected.upper()}\n- PROHIBIDO usar Python, matplotlib u otro lenguaje\n- AGREGA al código existente, NO lo reemplaces\n- Responde ÚNICAMENTE con código {lang_detected.upper()} válido\n- Si generas otro lenguaje, el sistema RECHAZARÁ tu respuesta"
         
         # Mapear intención a tool calls
         tool_calls = []
@@ -432,10 +473,24 @@ class OrchestrationLayer:
 - PROHIBIDO cambiar a otro lenguaje
 - Responde ÚNICAMENTE con código {locked_lang.upper()} válido"""
                 
+                # Obtener contexto conversacional (historial reciente)
+                from agent.core.memory_manager import get_memory_manager
+                memory_mgr = get_memory_manager()
+                conversation_context = memory_mgr.get_context(session_id, window=3)  # Últimos 3 intercambios
+                
+                context_instruction = ""
+                if conversation_context:
+                    context_instruction = f"""
+
+📝 CONTEXTO CONVERSACIONAL RECIENTE:
+{conversation_context}
+
+IMPORTANTE: Considera este contexto para mantener coherencia en tu respuesta."""
+                
                 prompt = f"""Tienes este código actual:
 {existing_code}
 
-TAREA DEL USUARIO: {user_input}{lang_instruction}
+TAREA DEL USUARIO: {user_input}{lang_instruction}{context_instruction}
 
 INSTRUCCIONES CRÍTICAS:
 1. Genera ÚNICAMENTE el NUEVO elemento/código que pide el usuario
@@ -443,6 +498,7 @@ INSTRUCCIONES CRÍTICAS:
 3. NO incluyas código existente en tu respuesta
 4. Responde SOLO con el fragmento nuevo (ej: <div>...</div> o def funcion(): ...)
 5. El sistema aplicará automáticamente tu cambio como un parche
+6. AGREGA al código existente, NO lo reemplaces completamente
 
 Ejemplos correctos:
 - Usuario: "agrega un círculo rojo"
@@ -460,10 +516,9 @@ IMPORTANTE: Genera SOLO el nuevo fragmento, nada más."""
                 {'tool': 'generate_with_llm', 'params': {
                     'prompt': prompt,
                     'temperature': 0.8
-                }},
-                {'tool': 'write_file', 'params': {
-                    'content': 'PLACEHOLDER'  # Se reemplazará con resultado anterior
                 }}
+                # NOTA: Eliminamos write_file porque el código generado se devuelve directamente
+                # El frontend es responsable de mostrar/guardar el código según sea necesario
             ]
         elif intention == 'fix':
             tool_calls = [
@@ -621,18 +676,32 @@ Responde en español. Sé CONCISO.""",
                             final_result = existing_code + '\n\n' + new_fragment
                     
                     elif is_python or is_javascript:
-                        # Para Python/JavaScript, usar overlap detection
-                        existing_lines = set(existing_code.split('\n')[:10])
-                        new_lines_set = set(new_fragment.split('\n'))
-                        overlap = len(existing_lines.intersection(new_lines_set)) / max(len(existing_lines), 1)
-                        should_combine = overlap < 0.5
+                        # Para Python/JavaScript, SIEMPRE agregar al código existente
+                        # MEJORA: Preservar todo el código anterior y agregar lo nuevo
                         
-                        if should_combine:
-                            final_result = existing_code + '\n\n' + new_fragment
-                            logger.info(f"✅ Código concatenado (overlap: {overlap:.2f})")
+                        # Verificar si el nuevo fragmento ya está incluido (evitar duplicados)
+                        if new_fragment.strip() in existing_code:
+                            final_result = existing_code
+                            logger.info("✅ Fragmento ya existe en código, manteniendo original")
                         else:
-                            final_result = new_fragment
-                            logger.info(f"Código completo generado por LLM (overlap alto: {overlap:.2f})")
+                            # Detectar estructura del código para inserción inteligente
+                            existing_lines = existing_code.split('\n')
+                            new_lines = new_fragment.split('\n')
+                            
+                            # Estrategia 1: Si hay solapamiento significativo, mantener solo el nuevo
+                            existing_set = set(line.strip() for line in existing_lines if line.strip())
+                            new_set = set(line.strip() for line in new_lines if line.strip())
+                            overlap = len(existing_set.intersection(new_set)) / max(len(new_set), 1)
+                            
+                            if overlap > 0.8:
+                                # El LLM regeneró todo el archivo - usar solo el nuevo
+                                final_result = new_fragment
+                                logger.info(f"Código completo regenerado por LLM (overlap: {overlap:.2f})")
+                            else:
+                                # AGREGAR al código existente (comportamiento normal)
+                                # Insertar después del último bloque de código relevante
+                                final_result = self._smart_append_code(existing_code, new_fragment, is_python)
+                                logger.info(f"✅ Código agregado exitosamente (overlap: {overlap:.2f})")
             
             return {
                 'respuesta': final_result if isinstance(final_result, str) else str(final_result),
@@ -704,30 +773,42 @@ Responde en español. Sé CONCISO.""",
         }
     
     def _detect_language(self, code: str) -> str:
-        """Detecta el lenguaje del código"""
-        if not code:
+        """Detecta el lenguaje del código - VERSIÓN MEJORADA"""
+        if not code or len(code.strip()) < 5:
             return 'unknown'
         
         code_lower = code.lower()
         
-        # HTML
-        if any(tag in code_lower for tag in ['<html', '<div', '<span', '<svg', '<circle', '<body']):
+        # HTML - DETECCIÓN MEJORADA (prioridad alta)
+        html_indicators = [
+            '<html', '<div', '<span', '<svg', '<circle', '<rect', '<body',
+            '<head', '<title', '<h1', '<h2', '<p', '<button', '<input',
+            '<form', '<table', '<ul', '<ol', '<li', '<a ', '<img',
+            '<video', '<audio', '<canvas', '<script', '<style',
+            '<!doctype', '<meta', '<link'
+        ]
+        html_count = sum(1 for tag in html_indicators if tag in code_lower)
+        if html_count >= 1:
             return 'html'
         
         # Python
-        if any(kw in code for kw in ['def ', 'import ', 'print(', 'class ']):
+        python_indicators = ['def ', 'import ', 'print(', 'class ', 'from ', 'elif ', 'except:', 'finally:']
+        python_count = sum(1 for kw in python_indicators if kw in code)
+        if python_count >= 1:
             return 'python'
         
         # JavaScript
-        if any(kw in code for kw in ['function', 'const ', 'let ', 'console.log']):
+        js_indicators = ['function', 'const ', 'let ', 'var ', 'console.log', 'document.', 'window.', '=>', 'addEventListener']
+        js_count = sum(1 for kw in js_indicators if kw in code)
+        if js_count >= 1:
             return 'javascript'
         
         # Java
-        if 'public class' in code or 'System.out' in code:
+        if 'public class' in code or 'System.out' in code or 'public static void' in code:
             return 'java'
         
         # C/C++
-        if '#include' in code:
+        if '#include' in code or 'printf(' in code or 'std::' in code:
             return 'c'
         
         return 'unknown'
@@ -779,6 +860,57 @@ Responde en español. Sé CONCISO.""",
                     return matched_text
         
         return None
+    
+    def _smart_append_code(self, existing_code: str, new_code: str, is_python: bool) -> str:
+        """
+        Agrega código nuevo al código existente de forma inteligente.
+        Preserva todo el código anterior y agrega lo nuevo en la ubicación apropiada.
+        
+        Args:
+            existing_code: Código actual completo
+            new_code: Nuevo fragmento a agregar
+            is_python: True si es Python, False si es JavaScript
+            
+        Returns:
+            Código combinado
+        """
+        existing_lines = existing_code.split('\n')
+        new_lines = new_code.split('\n')
+        
+        if is_python:
+            # Para Python: encontrar el final del último bloque (función/clase)
+            insert_position = len(existing_lines)
+            
+            # Buscar última línea no vacía
+            for i in range(len(existing_lines) - 1, -1, -1):
+                line = existing_lines[i].strip()
+                if line and not line.startswith('#'):
+                    # Si termina con ':', probablemente es inicio de bloque
+                    if line.endswith(':'):
+                        # Insertar después del bloque completo
+                        indent_level = len(existing_lines[i]) - len(existing_lines[i].lstrip())
+                        # Buscar siguiente línea con misma indentación o menor
+                        for j in range(i + 1, len(existing_lines)):
+                            next_line = existing_lines[j]
+                            if next_line.strip():  # No vacía
+                                next_indent = len(next_line) - len(next_line.lstrip())
+                                if next_indent <= indent_level:
+                                    insert_position = j
+                                    break
+                        else:
+                            insert_position = len(existing_lines)
+                    else:
+                        insert_position = i + 1
+                    break
+            
+            # Insertar con separador adecuado
+            result_lines = existing_lines[:insert_position] + [''] + new_lines + existing_lines[insert_position:]
+            return '\n'.join(result_lines)
+        
+        else:
+            # Para JavaScript: agregar al final con separadores claros
+            separator = '\n\n// ' + '='*50 + '\n// NUEVO CÓDIGO AGREGADO\n' + '='*50 + '\n'
+            return existing_code + separator + new_code
     
     def _update_stats(self, duration: float, success: bool):
         """Actualiza estadísticas de ejecución"""

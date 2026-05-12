@@ -100,6 +100,9 @@ class ChatManager {
             currentCode = window.CodeEditorManager.codeEditor.value;
         }
 
+        // Obtener session_id para mantener contexto conversacional
+        const sessionId = window.currentSessionId || 'default';
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -107,6 +110,7 @@ class ChatManager {
             },
             body: JSON.stringify({ 
                 message,
+                session_id: sessionId,  // Enviar session_id para contexto
                 context: {
                     current_code: currentCode
                 }
@@ -117,7 +121,14 @@ class ChatManager {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+        
+        // Guardar session_id recibido del backend para futuras peticiones
+        if (data.session_id) {
+            window.currentSessionId = data.session_id;
+        }
+        
+        return data;
     }
 
     /**

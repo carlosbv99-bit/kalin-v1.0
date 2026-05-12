@@ -150,6 +150,21 @@ class ToolSandbox:
                 sandbox_violations=violations
             )
         
+        # PASO 2.5: Validar parámetros requeridos para tools específicos
+        required_params = self._get_required_params(tool_name)
+        missing_params = [p for p in required_params if p not in params]
+        if missing_params:
+            error_msg = f"Tool '{tool_name}' requires parameters: {', '.join(required_params)}. Missing: {', '.join(missing_params)}"
+            logger.warning(error_msg)
+            # En lugar de fallar, devolver resultado parcial con advertencia
+            # Esto permite que la respuesta del LLM se use aunque el tool falle
+            return ToolExecutionResult(
+                success=False,
+                error=error_msg,
+                execution_time=time.time() - start_time,
+                sandbox_violations=[f"Missing required parameters: {', '.join(missing_params)}"]
+            )
+        
         # PASO 3: Ejecutar con timeout y captura de errores
         try:
             result = self._execute_with_safety(tool_func, params, context)
@@ -275,6 +290,17 @@ class ToolSandbox:
             return result
         except subprocess.TimeoutExpired:
             raise TimeoutError(f"Subprocess timed out after {timeout}s")
+    
+    def _get_required_params(self, tool_name: str) -> List[str]:
+        """Devuelve lista de parámetros requeridos para cada tool"""
+        required = {
+            'write_file': ['path', 'content'],
+            'read_file': ['path'],
+            'apply_patch': ['file_path'],
+            'create_patch': ['file_path', 'modified'],
+            'generate_with_llm': ['prompt'],
+        }
+        return required.get(tool_name, [])
     
     def _validate_result(self, result: Any, tool_name: str) -> bool:
         """Valida el resultado de la tool"""

@@ -13,6 +13,7 @@ from agent.llm.providers.ollama_provider import OllamaProvider
 from agent.llm.providers.openai_provider import OpenAIProvider
 from agent.llm.providers.anthropic_provider import AnthropicProvider
 from agent.llm.providers.groq_provider import GroqProvider
+from agent.llm.providers.mimo_provider import MimoProvider
 
 DEBUG_MODE = False  # FORZADO A FALSE - Logs cortos
 
@@ -133,6 +134,7 @@ class LLMProviderManager:
             ProviderType.OPENAI: OpenAIProvider,
             ProviderType.ANTHROPIC: AnthropicProvider,
             ProviderType.GROQ: GroqProvider,
+            ProviderType.MIMO: MimoProvider,
         }
 
         for provider_type, ProviderClass in provider_classes.items():

@@ -91,8 +91,12 @@ class OllamaProvider(BaseLLMProvider):
             temperature: Temperatura (0.0-1.0). Si es None, usa default según tipo de modelo
         """
         try:
+            # IMPORTANTE: Leer modelo actualizado del environment cada vez
+            import os
+            current_model = os.getenv('OLLAMA_MODEL', self.model)
+            
             # Detectar si es modelo de chat y usar endpoint apropiado
-            is_chat_model = "chat" in self.model or "qwen" in self.model.lower() or "llama" in self.model.lower()
+            is_chat_model = "chat" in current_model or "qwen" in current_model.lower() or "llama" in current_model.lower()
             
             # Usar temperatura proporcionada o defaults
             if temperature is None:
@@ -126,7 +130,7 @@ class OllamaProvider(BaseLLMProvider):
                     }
                 
                 payload = {
-                    "model": self.model,
+                    "model": current_model,  # USAR MODELO ACTUAL DEL ENVIRONMENT
                     "messages": [
                         {"role": "user", "content": prompt}
                     ],
@@ -137,7 +141,7 @@ class OllamaProvider(BaseLLMProvider):
                 # Usar endpoint /api/generate para modelos de código
                 api_url = f"{self.endpoint}/api/generate"
                 payload = {
-                    "model": self.model,
+                    "model": current_model,  # USAR MODELO ACTUAL DEL ENVIRONMENT
                     "prompt": prompt,
                     "stream": False,
                     "options": {
@@ -173,11 +177,11 @@ class OllamaProvider(BaseLLMProvider):
                 print("🧠 RAW OLLAMA:", data)
                 return None
 
-            print(f"✅ Respuesta generada ({len(text)} chars)")
+            print(f"✅ Respuesta generada ({len(text)} chars) con modelo: {current_model}")
             return LLMResponse(
                 text=text,
                 provider="ollama",
-                model=self.model,
+                model=current_model,
                 tokens_used=data.get("eval_count", 0),
                 cost=0.0  # Ollama es gratis (local)
             )

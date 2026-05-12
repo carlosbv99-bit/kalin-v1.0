@@ -75,8 +75,8 @@ class ConversationManager:
             'message_count': 0
         }
         
-        # DESACTIVADO: No cargar sesión anterior para evitar procesar historial antiguo
-        # self._load_session()
+        # ACTIVADO: Cargar sesión anterior para mantener contexto entre reinicios
+        self._load_session()
         
         logger.info(f"ConversationManager initialized: session={self.session_id}")
     

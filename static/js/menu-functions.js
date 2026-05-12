@@ -341,42 +341,25 @@ function loadInstalledModelsToMainSubmenu() {
                 // Modelos locales siempre están disponibles si Ollama está instalado
                 availableModels.push(modelName);
             }
-            // Verificar si es modelo en la nube con API Key configurada (backend ya filtró)
-            else if (modelName.includes('(Nube - OpenAI)') && providersConfigured.openai) {
-                availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Anthropic)') && providersConfigured.anthropic) {
-                availableModels.push(modelName);
-            }
-            else if (modelName.includes('Groq') && providersConfigured.groq) {
-                availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Gemini)') && providersConfigured.gemini) {
-                availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Mistral)') && providersConfigured.mistral) {
-                availableModels.push(modelName);
-            }
-            // Fallback: verificar localStorage si el backend no envió info
-            else if (modelName.includes('(Nube - OpenAI)')) {
-                const apiKey = localStorage.getItem('openai_api_key');
-                if (apiKey) availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Anthropic)')) {
-                const apiKey = localStorage.getItem('anthropic_api_key');
-                if (apiKey) availableModels.push(modelName);
-            }
-            else if (modelName.includes('Groq')) {
-                const apiKey = localStorage.getItem('groq_api_key');
-                if (apiKey) availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Gemini)')) {
-                const apiKey = localStorage.getItem('gemini_api_key');
-                if (apiKey) availableModels.push(modelName);
-            }
-            else if (modelName.includes('(Nube - Mistral)')) {
-                const apiKey = localStorage.getItem('mistral_api_key');
-                if (apiKey) availableModels.push(modelName);
+            // Verificar si es modelo en la nube - VERIFICACIÓN DINÁMICA
+            else if (modelName.includes('(Nube')) {
+                // Extraer el nombre del proveedor del formato "(Nube - ProviderName)"
+                const match = modelName.match(/\(Nube - (.+?)\)/);
+                if (match) {
+                    const providerName = match[1].toLowerCase();
+                    
+                    // Verificar en providers_configured (backend)
+                    if (providersConfigured[providerName]) {
+                        availableModels.push(modelName);
+                    }
+                    // Fallback: verificar localStorage
+                    else {
+                        const apiKey = localStorage.getItem(`${providerName}_api_key`);
+                        if (apiKey) {
+                            availableModels.push(modelName);
+                        }
+                    }
+                }
             }
         });
         
@@ -385,13 +368,16 @@ function loadInstalledModelsToMainSubmenu() {
             availableModels.forEach(model => {
                 const modelName = typeof model === 'string' ? model : (model.name || model.id || JSON.stringify(model));
                 
-                // Determinar icono según el tipo
+                // Determinar icono según el tipo - DINÁMICO
                 let icon = '🦙';
                 if (modelName.includes('OpenAI')) icon = '🔵';
                 else if (modelName.includes('Anthropic')) icon = '🟣';
-                else if (modelName.includes('Grok')) icon = '⚡';
+                else if (modelName.includes('Groq') || modelName.includes('Grok')) icon = '⚡';
                 else if (modelName.includes('Gemini')) icon = '🌟';
                 else if (modelName.includes('Mistral')) icon = '🎯';
+                else if (modelName.includes('MiMo')) icon = '🚀';
+                else if (modelName.includes('Azure')) icon = '☁️';
+                else if (modelName.includes('HuggingFace')) icon = '🤗';
                 
                 html += `<div class="dropdown-item" onclick="activateLocalModel('${modelName}')"><span>${icon} ${modelName}</span></div>`;
             });
@@ -434,13 +420,12 @@ function updateModelIndicator() {
             const fullModel = data.model;
             modelName = fullModel.split(' (')[0].trim();
             
-            // Detectar proveedor
+            // Detectar proveedor - DINÁMICO
             if (fullModel.includes('Nube')) {
-                if (fullModel.includes('OpenAI')) provider = 'openai';
-                else if (fullModel.includes('Anthropic')) provider = 'anthropic';
-                else if (fullModel.includes('Groq')) provider = 'groq';
-                else if (fullModel.includes('Gemini')) provider = 'gemini';
-                else if (fullModel.includes('Mistral')) provider = 'mistral';
+                const match = fullModel.match(/\(Nube - (.+?)\)/);
+                if (match) {
+                    provider = match[1].toLowerCase();
+                }
             }
         } else if (data.current_model) {
             modelName = data.current_model.split(' (')[0].trim();
@@ -455,6 +440,7 @@ function updateModelIndicator() {
             else if (provider === 'groq') icon = '⚡';
             else if (provider === 'gemini') icon = '🌟';
             else if (provider === 'mistral') icon = '🎯';
+            else if (provider === 'mimo') icon = '🚀';
             
             indicator.innerHTML = `${icon} ${modelName} <span style="font-size: 10px;">▼</span>`;
         }
@@ -481,15 +467,16 @@ function activateLocalModel(modelName) {
     
     localStorage.setItem('last_active_model', cleanModelName);
     
-    // Determinar si es modelo local o cloud
+    // Determinar si es modelo local o cloud - DINÁMICO
     const isCloud = modelName.includes('(Nube');
     let provider = 'ollama';
     
     if (modelName.includes('OpenAI')) provider = 'openai';
     else if (modelName.includes('Anthropic')) provider = 'anthropic';
-    else if (modelName.includes('Groq')) provider = 'groq';
+    else if (modelName.includes('Groq') || modelName.includes('Grok')) provider = 'groq';
     else if (modelName.includes('Gemini')) provider = 'gemini';
     else if (modelName.includes('Mistral')) provider = 'mistral';
+    else if (modelName.includes('MiMo')) provider = 'mimo';
     
     // Obtener API Key si es modelo cloud
     const apiKey = isCloud ? localStorage.getItem(`${provider}_api_key`) : null;
@@ -535,6 +522,11 @@ function showDownloadModelsSubmenu(event) {
             submenu.style.left = (rect.right - 5) + 'px';
         }
         submenu.style.display = 'block';
+        
+        // Cargar modelos de Ollama dinámicamente
+        if (typeof loadOllamaModelsList === 'function') {
+            loadOllamaModelsList();
+        }
     }
 }
 
@@ -556,6 +548,11 @@ function hideDownloadModelsSubmenu(event) {
 function downloadLocalModel(modelName) {
     closeAllMenus();
     
+    // Mostrar indicador de progreso
+    if (typeof showModelDownloadIndicator === 'function') {
+        showModelDownloadIndicator(modelName);
+    }
+    
     fetch('/system/check-model', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -564,13 +561,101 @@ function downloadLocalModel(modelName) {
     .then(response => response.json())
     .then(data => {
         if (data.installed) {
-            const useModel = confirm(`El modelo ${modelName} ya está instalado.\n\n¿Deseas activarlo como modelo activo?`);
-            if (useModel) {
-                activateLocalModel(modelName);
-            }
+            // Modelo ya instalado - preguntar si activar
+            showConfirmModal(
+                `El modelo ${modelName} ya está instalado.\n\n¿Deseas activarlo como modelo activo?`,
+                () => activateLocalModel(modelName)
+            );
         } else {
-            const downloadModel = confirm(`El modelo ${modelName} no está instalado.\n\n¿Deseas descargarlo e instalarlo?\n\nEsto puede tardar varios minutos.`);
-            if (downloadModel) {
+            // Modelo no instalado - preguntar si descargar
+            showConfirmModal(
+                `El modelo ${modelName} no está instalado.\n\n¿Deseas descargarlo e instalarlo?\n\nEsto puede tardar varios minutos.`,
+                () => {
+                    fetch('/system/download-model', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: modelName })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Ocultar indicador de progreso
+                        if (typeof hideModelDownloadIndicator === 'function') {
+                            hideModelDownloadIndicator();
+                        }
+                        
+                        if (data.status === 'success') {
+                            showAlertModal(
+                                `Modelo ${modelName} descargado correctamente.\n\n¿Deseas activarlo ahora?`,
+                                'success'
+                            );
+                            // Agregar botones de acción al modal
+                            setTimeout(() => {
+                                const overlay = document.querySelector('div[style*="z-index: 10000"]');
+                                if (overlay) {
+                                    const modal = overlay.querySelector('div');
+                                    const buttonContainer = modal.querySelector('div:last-child');
+                                    
+                                    // Botón Sí
+                                    const yesBtn = document.createElement('button');
+                                    yesBtn.textContent = 'Sí, activar';
+                                    yesBtn.style.padding = '10px 20px';
+                                    yesBtn.style.border = 'none';
+                                    yesBtn.style.background = '#28a745';
+                                    yesBtn.style.color = '#ffffff';
+                                    yesBtn.style.borderRadius = '6px';
+                                    yesBtn.style.cursor = 'pointer';
+                                    yesBtn.style.fontSize = '14px';
+                                    yesBtn.style.marginLeft = '8px';
+                                    yesBtn.onclick = () => {
+                                        document.body.removeChild(overlay);
+                                        activateLocalModel(modelName);
+                                    };
+                                    
+                                    // Botón No
+                                    const noBtn = document.createElement('button');
+                                    noBtn.textContent = 'No, más tarde';
+                                    noBtn.style.padding = '10px 20px';
+                                    noBtn.style.border = '1px solid #555';
+                                    noBtn.style.background = '#2d2d2d';
+                                    noBtn.style.color = '#ffffff';
+                                    noBtn.style.borderRadius = '6px';
+                                    noBtn.style.cursor = 'pointer';
+                                    noBtn.style.fontSize = '14px';
+                                    noBtn.onclick = () => {
+                                        document.body.removeChild(overlay);
+                                    };
+                                    
+                                    buttonContainer.insertBefore(yesBtn, buttonContainer.firstChild);
+                                    buttonContainer.insertBefore(noBtn, buttonContainer.firstChild);
+                                }
+                            }, 100);
+                        } else {
+                            showAlertModal(`Error al descargar modelo: ${data.message}`, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        // Ocultar indicador de progreso
+                        if (typeof hideModelDownloadIndicator === 'function') {
+                            hideModelDownloadIndicator();
+                        }
+                        
+                        console.error('Error al descargar modelo:', error);
+                        showAlertModal('Error de conexión al descargar modelo', 'error');
+                    });
+                }
+            );
+        }
+    })
+    .catch(error => {
+        // Ocultar indicador de progreso
+        if (typeof hideModelDownloadIndicator === 'function') {
+            hideModelDownloadIndicator();
+        }
+        
+        console.error('Error al verificar modelo:', error);
+        showConfirmModal(
+            `No se pudo verificar el estado del modelo ${modelName}.\n\n¿Deseas intentar descargarlo de todas formas?`,
+            () => {
                 fetch('/system/download-model', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -579,43 +664,17 @@ function downloadLocalModel(modelName) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        const activateAfter = confirm(`✅ Modelo ${modelName} descargado correctamente.\n\n¿Deseas activarlo ahora?`);
-                        if (activateAfter) {
-                            activateLocalModel(modelName);
-                        }
+                        showAlertModal(`Modelo ${modelName} descargado correctamente`, 'success');
                     } else {
-                        alert(`❌ Error al descargar modelo: ${data.message}`);
+                        showAlertModal(`Error: ${data.message}`, 'error');
                     }
                 })
                 .catch(error => {
-                    console.error('Error al descargar modelo:', error);
-                    alert('❌ Error de conexión al descargar modelo');
+                    console.error('Error:', error);
+                    showAlertModal('Error de conexión', 'error');
                 });
             }
-        }
-    })
-    .catch(error => {
-        console.error('Error al verificar modelo:', error);
-        const downloadAnyway = confirm(`No se pudo verificar el estado del modelo ${modelName}.\n\n¿Deseas intentar descargarlo de todas formas?`);
-        if (downloadAnyway) {
-            fetch('/system/download-model', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: modelName })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert(`✅ Modelo ${modelName} descargado correctamente`);
-                } else {
-                    alert(`❌ Error: ${data.message}`);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('❌ Error de conexión');
-            });
-        }
+        );
     });
 }
 
@@ -708,6 +767,7 @@ function keepCloudProviderSubmenuOpen(provider) {
  * Activar modelo en la nube con verificación de API Key
  */
 function activateCloudModel(provider, modelName) {
+    console.log('🔍 activateCloudModel llamado con:', provider, modelName);
     closeAllMenus();
     
     const providerNames = {
@@ -715,10 +775,12 @@ function activateCloudModel(provider, modelName) {
         'anthropic': 'Anthropic',
         'groq': 'Groq',
         'gemini': 'Google Gemini',
-        'mistral': 'Mistral AI'
+        'mistral': 'Mistral AI',
+        'mimo': 'Xiaomi MiMo'
     };
     
     const savedApiKey = localStorage.getItem(`${provider}_api_key`);
+    console.log('💾 API Key guardada en localStorage:', savedApiKey ? 'SÍ' : 'NO');
     
     if (savedApiKey) {
         const useSaved = confirm(`API Key de ${providerNames[provider]} encontrada.\n\n¿Deseas usarla para activar ${modelName}?\n\n(Aceptar: Usar guardada / Cancelar: Ingresar nueva)`);
@@ -731,6 +793,7 @@ function activateCloudModel(provider, modelName) {
     
     // Mostrar modal personalizado para ingresar API Key
     showApiKeyModal(provider, modelName, function(apiKey) {
+        console.log('✅ API Key ingresada:', apiKey ? 'SÍ' : 'NO');
         localStorage.setItem(`${provider}_api_key`, apiKey);
         setCloudModel(provider, modelName, apiKey);
     });
@@ -740,25 +803,37 @@ function activateCloudModel(provider, modelName) {
  * Configurar y activar modelo en la nube
  */
 function setCloudModel(provider, modelName, apiKey) {
+    console.log('🚀 setCloudModel llamado con:', { provider, modelName, apiKey: apiKey ? 'SÍ (' + apiKey.length + ' chars)' : 'NO' });
+    
     const providerNames = {
         'openai': 'OpenAI',
         'anthropic': 'Anthropic',
         'groq': 'Groq',
         'gemini': 'Google Gemini',
-        'mistral': 'Mistral AI'
+        'mistral': 'Mistral AI',
+        'mimo': 'MiMo'
     };
+    
+    // Construir el nombre completo con etiqueta de nube
+    const fullModelName = `${modelName} (Nube - ${providerNames[provider]})`;
+    console.log('📤 Enviando al servidor:', fullModelName);
+    console.log('📤 Datos completos:', { model: fullModelName, provider: provider, api_key: apiKey ? '[HIDDEN]' : null });
     
     fetch('/system/set-model', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            model: modelName,
+            model: fullModelName,
             provider: provider,
             api_key: apiKey
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('📥 Respuesta HTTP status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('📥 Respuesta del servidor:', data);
         if (data.status === 'success') {
             alert(`✅ Modelo activado: ${modelName} (${providerNames[provider]})`);
             updateModelIndicator();
@@ -767,7 +842,7 @@ function setCloudModel(provider, modelName, apiKey) {
         }
     })
     .catch(error => {
-        console.error('Error al cambiar modelo:', error);
+        console.error('❌ Error al cambiar modelo:', error);
         alert('❌ Error de conexión al cambiar modelo');
     });
 }
@@ -852,7 +927,8 @@ function showApiKeyModal(provider, modelName, callback) {
         'anthropic': 'Anthropic',
         'groq': 'Groq',
         'gemini': 'Google Gemini',
-        'mistral': 'Mistral AI'
+        'mistral': 'Mistral AI',
+        'mimo': 'Xiaomi MiMo'
     };
     
     title.textContent = `🔑 API Key de ${providerNames[provider] || provider}`;
@@ -873,18 +949,29 @@ function closeApiKeyModal() {
 }
 
 function submitApiKey() {
+    console.log('🔑 submitApiKey llamado');
     const input = document.getElementById('api-key-input');
     const apiKey = input.value.trim();
+    
+    console.log('🔑 API Key ingresada:', apiKey ? 'SÍ (' + apiKey.length + ' caracteres)' : 'NO');
     
     if (!apiKey) {
         alert('⚠️ Por favor ingresa una API Key válida');
         return;
     }
     
+    // Guardar el callback ANTES de cerrar el modal
+    const callback = apiKeyCallback;
+    console.log('🔑 Callback guardado:', callback ? 'SÍ' : 'NO');
+    
     closeApiKeyModal();
     
-    if (apiKeyCallback) {
-        apiKeyCallback(apiKey);
+    console.log('🔑 Ejecutando callback...');
+    if (callback) {
+        console.log('🔑 Callback existe, ejecutando...');
+        callback(apiKey);
+    } else {
+        console.error('❌ callback es NULL');
     }
 }
 

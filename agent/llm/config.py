@@ -13,6 +13,7 @@ class ProviderType(Enum):
     GROQ = "groq"
     GEMINI = "gemini"
     MISTRAL = "mistral"
+    MIMO = "mimo"
 
 
 class LLMConfig:
@@ -68,8 +69,8 @@ class LLMConfig:
         },
         ProviderType.GROQ: {
             "endpoint": "https://api.groq.com/openai/v1",
-            "model": os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
-            "api_key": os.getenv("GROQ_API_KEY"),
+            "model": os.getenv("GROQ_MODEL", os.getenv("GROK_MODEL", "llama-3.1-8b-instant")),
+            "api_key": os.getenv("GROQ_API_KEY", os.getenv("GROK_API_KEY")),
             "timeout": 30,
             "cost_per_1k": 0,  # Gratis actualmente
         },
@@ -86,6 +87,13 @@ class LLMConfig:
             "api_key": os.getenv("MISTRAL_API_KEY"),
             "timeout": 30,
             "cost_per_1k": 0.002,  # Muy económico
+        },
+        ProviderType.MIMO: {
+            "endpoint": os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1"),
+            "model": os.getenv("MIMO_MODEL", "mimo-v2-flash"),
+            "api_key": os.getenv("MIMO_API_KEY"),
+            "timeout": 60,  # Aumentado para mejor rendimiento
+            "cost_per_1k": 0,  # Gratuito temporalmente
         },
     }
 
@@ -158,6 +166,8 @@ class LLMConfig:
             return ProviderType.ANTHROPIC
         elif active == "ollama":
             return ProviderType.OLLAMA
+        elif active == "mimo":
+            return ProviderType.MIMO
 
         # 2. Si no hay activo, usar la lógica por defecto según el modo
         if cls.MODE == "local":
@@ -199,6 +209,88 @@ class LLMConfig:
             p for p in cls.get_fallback_order()
             if cls.is_configured(p)
         ]
+    
+    @classmethod
+    def get_configured_cloud_providers(cls) -> List[Dict[str, str]]:
+        """
+        Obtiene dinámicamente todos los proveedores de nube configurados.
+        Retorna lista de dicts con: provider_type, model_name, display_name
+        """
+        # Recargar .env para obtener configuraciones actualizadas
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        
+        configured = []
+        
+        # Mapeo de nombres amigables para mostrar
+        provider_display_names = {
+            'openai': 'OpenAI',
+            'anthropic': 'Anthropic',
+            'azure': 'Azure',
+            'huggingface': 'HuggingFace',
+            'groq': 'Groq',
+            'gemini': 'Gemini',
+            'mistral': 'Mistral',
+            'mimo': 'MiMo',
+        }
+        
+        for provider_type, config in cls.PROVIDERS.items():
+            # Saltar Ollama (es local)
+            if provider_type == ProviderType.OLLAMA:
+                continue
+            
+            # Verificar si está configurado (tiene API key)
+            # IMPORTANTE: Re-verificar usando os.getenv directamente para datos actualizados
+            if provider_type == ProviderType.OPENAI:
+                is_config = bool(os.getenv("OPENAI_API_KEY"))
+            elif provider_type == ProviderType.ANTHROPIC:
+                is_config = bool(os.getenv("ANTHROPIC_API_KEY"))
+            elif provider_type == ProviderType.AZURE:
+                is_config = bool(os.getenv("AZURE_API_KEY"))
+            elif provider_type == ProviderType.HUGGING_FACE:
+                is_config = bool(os.getenv("HF_API_KEY"))
+            elif provider_type == ProviderType.GROQ:
+                is_config = bool(os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY"))
+            elif provider_type == ProviderType.GEMINI:
+                is_config = bool(os.getenv("GEMINI_API_KEY"))
+            elif provider_type == ProviderType.MISTRAL:
+                is_config = bool(os.getenv("MISTRAL_API_KEY"))
+            elif provider_type == ProviderType.MIMO:
+                is_config = bool(os.getenv("MIMO_API_KEY"))
+            else:
+                is_config = False
+            
+            if is_config:
+                # Obtener el modelo actualizado directamente del environment
+                if provider_type == ProviderType.OPENAI:
+                    model_name = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
+                elif provider_type == ProviderType.ANTHROPIC:
+                    model_name = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet")
+                elif provider_type == ProviderType.AZURE:
+                    model_name = os.getenv("AZURE_DEPLOYMENT", "unknown")
+                elif provider_type == ProviderType.HUGGING_FACE:
+                    model_name = os.getenv("HF_MODEL", "meta-llama/Llama-2-7b-chat-hf")
+                elif provider_type == ProviderType.GROQ:
+                    model_name = os.getenv("GROQ_MODEL", os.getenv("GROK_MODEL", "llama-3.1-8b-instant"))
+                elif provider_type == ProviderType.GEMINI:
+                    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+                elif provider_type == ProviderType.MISTRAL:
+                    model_name = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
+                elif provider_type == ProviderType.MIMO:
+                    model_name = os.getenv("MIMO_MODEL", "mimo-v2-flash")
+                else:
+                    model_name = 'unknown'
+                    
+                provider_value = provider_type.value
+                display_name = provider_display_names.get(provider_value, provider_value.title())
+                
+                configured.append({
+                    'provider_type': provider_value,
+                    'model_name': model_name,
+                    'display_name': f"{model_name} (Nube - {display_name})"
+                })
+        
+        return configured
 
     @classmethod
     def get_provider_config(cls, provider: ProviderType) -> Dict:
